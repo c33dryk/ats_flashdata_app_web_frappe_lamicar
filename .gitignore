@@ -1,0 +1,7 @@
+# Env files con credenciales reales — nunca commitear
+.env
+.env.local
+
+# Backups (dumps, exports de Frappe) — pueden contener datos reales
+/backup/*
+!/backup/.gitkeep

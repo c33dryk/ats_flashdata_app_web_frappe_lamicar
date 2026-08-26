@@ -1,0 +1,17 @@
+services:
+  app:
+    build: ./app
+    restart: unless-stopped
+    environment:
+      FRAPPE_URL: ${FRAPPE_URL}
+      FRAPPE_API_KEY: ${FRAPPE_API_KEY}
+      FRAPPE_API_SECRET: ${FRAPPE_API_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
+      NODE_ENV: production
+    ports:
+      - "${APP_PORT}:3000"
+
+# No hay servicio de base de datos propio: los datos viven en Frappe Cloud (externo), consumido
+# vía API (ver app/src/lib/frappe/). Si en el futuro este template necesita un servicio propio
+# (ej. una cola, una cache), se agrega acá igual que "db" en el template de referencia (ats_app_talent).
