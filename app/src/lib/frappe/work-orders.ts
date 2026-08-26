@@ -1,3 +1,4 @@
+import type { AppRole } from "@/lib/auth-shared";
 import { createDoc, deleteDoc, getDoc, getList, updateDoc } from "./resource";
 
 // Tipos y helpers para los doctypes del módulo "Lamicar Services" (work orders de taller).
@@ -263,3 +264,37 @@ export function getEvidencePolicies() {
 }
 
 export { deleteDoc };
+
+// ── Máquina de estados y permisos ───────────────────────────────────────────
+// Calcado del ciclo de vida documentado en el MVP de referencia
+// (D:\Lab\lamicar-workorders\docs\DIAGRAMAS_ASCII.md) y de los roles reales de Lamicar.
+
+export type WorkOrderCommand =
+  | "start"
+  | "mark_pending"
+  | "finish"
+  | "deliver"
+  | "invoice"
+  | "cancel";
+
+export const ALLOWED_TRANSITIONS: Record<
+  WorkOrderStatus,
+  Partial<Record<WorkOrderCommand, WorkOrderStatus>>
+> = {
+  Nueva: { start: "En Curso", cancel: "Anulada" },
+  "En Curso": { mark_pending: "Pendiente", finish: "Terminada", cancel: "Anulada" },
+  Pendiente: { start: "En Curso", cancel: "Anulada" },
+  Terminada: { deliver: "Entregada" },
+  Entregada: { invoice: "Facturada" },
+  Facturada: {},
+  Anulada: {},
+};
+
+export const COMMAND_ROLES: Record<WorkOrderCommand, AppRole[]> = {
+  start: ["admin", "recepcion", "tecnico"],
+  mark_pending: ["admin", "recepcion", "tecnico"],
+  finish: ["admin", "tecnico"],
+  deliver: ["admin", "recepcion"],
+  invoice: ["admin", "facturador"],
+  cancel: ["admin"],
+};

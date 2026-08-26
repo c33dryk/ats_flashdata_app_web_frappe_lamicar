@@ -10,12 +10,14 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LogOut,
+  ChevronRight,
   ChevronsUpDown,
   Settings,
   Boxes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type SessionPayload } from "@/lib/auth-shared";
+import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { useSidebar } from "./sidebar-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -46,9 +48,25 @@ const navPrincipal = [
   { href: "/work-orders", label: "Órdenes de Trabajo", icon: ClipboardList },
 ];
 
-// Vacío por default: agregar acá los links solo-admin del proyecto (gateado por
-// session.role === "admin" más abajo, y por proxy.ts para /admin/*).
-const navAdmin: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }> = [];
+// Links solo-admin del proyecto (gateado por session.role === "admin" más abajo, y por
+// proxy.ts para /admin/*). Cada grupo se expande como acordeón mostrando sus `children` — los
+// de "Configuración" salen de CATALOG_DEFS para no duplicar esa lista a mano.
+const navAdmin: Array<{
+  basePath: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: Array<{ href: string; label: string }>;
+}> = [
+  {
+    basePath: "/admin/configuracion",
+    label: "Configuración",
+    icon: Settings,
+    children: CATALOG_DEFS.map((def) => ({
+      href: `/admin/configuracion/${def.key}`,
+      label: def.label,
+    })),
+  },
+];
 
 function NavLink({
   href,
@@ -81,10 +99,29 @@ function NavLink({
   );
 }
 
+function SubNavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "block truncate rounded-md py-1.5 pr-2.5 pl-8 text-sm transition-colors",
+        active
+          ? "bg-brand/10 font-medium text-brand"
+          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+      )}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function AppSidebar({ session }: { session: SessionPayload | null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [openAdminGroup, setOpenAdminGroup] = useState<string | null>(
+    () => navAdmin.find((g) => pathname.startsWith(g.basePath))?.basePath ?? null
+  );
   const { mobileOpen, setMobileOpen } = useSidebar();
 
   // Cerrar el drawer móvil al navegar a otra ruta.
@@ -159,14 +196,56 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
                   Administración
                 </p>
               )}
-              {navAdmin.map((item) => (
-                <NavLink
-                  key={item.href}
-                  {...item}
-                  active={pathname.startsWith(item.href)}
-                  collapsed={collapsed}
-                />
-              ))}
+              {navAdmin.map((group) => {
+                const groupActive = pathname.startsWith(group.basePath);
+                if (collapsed) {
+                  return (
+                    <NavLink
+                      key={group.basePath}
+                      href={group.basePath}
+                      label={group.label}
+                      icon={group.icon}
+                      active={groupActive}
+                      collapsed={collapsed}
+                    />
+                  );
+                }
+                const isOpen = openAdminGroup === group.basePath;
+                return (
+                  <div key={group.basePath}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenAdminGroup((v) => (v === group.basePath ? null : group.basePath))
+                      }
+                      className={cn(
+                        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                        groupActive
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      )}
+                    >
+                      <group.icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 truncate text-left">{group.label}</span>
+                      <ChevronRight
+                        className={cn("h-3.5 w-3.5 shrink-0 transition-transform", isOpen && "rotate-90")}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="mt-1 flex flex-col gap-0.5">
+                        {group.children.map((child) => (
+                          <SubNavLink
+                            key={child.href}
+                            href={child.href}
+                            label={child.label}
+                            active={pathname.startsWith(child.href)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </nav>

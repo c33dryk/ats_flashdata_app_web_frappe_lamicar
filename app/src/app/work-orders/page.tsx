@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SearchableTable } from "@/components/searchable-table";
 import { getSession } from "@/lib/auth";
 import { getWorkOrders } from "@/lib/frappe/work-orders";
 import { FrappeApiError } from "@/lib/frappe/client";
@@ -71,38 +72,43 @@ export default async function WorkOrdersPage() {
         ) : workOrders.length === 0 ? (
           <p className="text-sm text-muted-foreground">No hay órdenes de trabajo.</p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nº OT</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Patente</TableHead>
-                <TableHead>Vehículo</TableHead>
-                <TableHead>Total Neto</TableHead>
-                <TableHead>Última actualización</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {workOrders.map((wo) => (
-                <TableRow key={wo.name}>
-                  <TableCell className="font-medium">
-                    <Link href={`/work-orders/${wo.name}`} className="hover:underline">
-                      {wo.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{wo.status}</Badge>
-                  </TableCell>
-                  <TableCell>{wo.customer_name}</TableCell>
-                  <TableCell>{wo.license_plate}</TableCell>
-                  <TableCell>{wo.vehicle_brand_model || "—"}</TableCell>
-                  <TableCell>{moneyFmt.format(wo.total_net || 0)}</TableCell>
-                  <TableCell>{fmtDate(wo.modified)}</TableCell>
+          <SearchableTable placeholder="Buscar por Nº, cliente o patente...">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nº OT</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Patente</TableHead>
+                  <TableHead>Vehículo</TableHead>
+                  <TableHead>Total Neto</TableHead>
+                  <TableHead>Última actualización</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {workOrders.map((wo) => (
+                  <TableRow
+                    key={wo.name}
+                    data-search={`${wo.name} ${wo.customer_name} ${wo.license_plate} ${wo.vehicle_brand_model ?? ""}`.toLowerCase()}
+                  >
+                    <TableCell className="font-medium">
+                      <Link href={`/work-orders/${wo.name}`} className="hover:underline">
+                        {wo.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{wo.status}</Badge>
+                    </TableCell>
+                    <TableCell>{wo.customer_name}</TableCell>
+                    <TableCell>{wo.license_plate}</TableCell>
+                    <TableCell>{wo.vehicle_brand_model || "—"}</TableCell>
+                    <TableCell>{moneyFmt.format(wo.total_net || 0)}</TableCell>
+                    <TableCell>{fmtDate(wo.modified)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SearchableTable>
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -12,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
+import { getSession } from "@/lib/auth";
 import { getWorkOrder } from "@/lib/frappe/work-orders";
 import { FrappeApiError } from "@/lib/frappe/client";
 
@@ -33,6 +36,9 @@ function fmtDateTime(value?: string) {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString("es-AR");
 }
 
+const EDIT_ROLES = ["admin", "recepcion", "tecnico"] as const;
+const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
+
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-0.5">
@@ -48,6 +54,7 @@ export default async function WorkOrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await getSession();
 
   let wo: Awaited<ReturnType<typeof getWorkOrder>> | null = null;
   let errorMessage: string | null = null;
@@ -82,10 +89,24 @@ export default async function WorkOrderDetailPage({
           </p>
         ) : wo ? (
           <>
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold tracking-tight">{wo.name}</h1>
-              <Badge variant="secondary">{wo.status}</Badge>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h1 className="text-lg font-semibold tracking-tight">{wo.name}</h1>
+                <Badge variant="secondary">{wo.status}</Badge>
+              </div>
+              {session &&
+                EDIT_ROLES.includes(session.role as (typeof EDIT_ROLES)[number]) &&
+                !LOCKED_STATUSES.includes(wo.status as (typeof LOCKED_STATUSES)[number]) && (
+                  <Link
+                    href={`/work-orders/${wo.name}/edit`}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    Editar
+                  </Link>
+                )}
             </div>
+
+            {session && <WorkOrderActions workOrder={wo} role={session.role} />}
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>

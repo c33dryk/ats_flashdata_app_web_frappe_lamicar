@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+> **Este repo ya no es un template en blanco** — es la app real de Lamicar (taller). Este archivo
+> sigue describiendo el template en general; para el estado puntual del proyecto (qué se construyó,
+> decisiones tomadas, gotchas encontrados, qué falta) ver **[.claude/PROJECT.md](.claude/PROJECT.md)**.
+
 ## Qué es esto
 
 Template reutilizable de app interna Next.js + Frappe. Nace como copia de la **estructura** (no del
@@ -67,8 +71,11 @@ No hay NextAuth ni SDK de Frappe del lado del navegador. El flujo es:
      única llamada que no usa el API key/secret del service account**. Si Frappe devuelve 401, la
      ruta devuelve 401 y no se crea sesión.
    - Si el login es válido, `getAppRoleForUser(email)` resuelve el rol de la app consultando
-     Frappe con el service account (`Has Role` del usuario). **Este mapeo es un placeholder**
-     (`"System Manager"` → `admin`, resto → `member`) — customizar por proyecto.
+     Frappe con el service account (`roles` del usuario). Ya customizado para este proyecto: los
+     5 Roles de Frappe de Lamicar (`WO Admin`/`WO Recepcion`/`WO Tecnico`/`WO Facturador`/
+     `WO Auditor`) mapean 1:1 a `AppRole` — ver `.claude/PROJECT.md`. **El rol queda fijo en la
+     cookie al momento del login**, no se recalcula en cada request — si cambiás el Role de un
+     usuario en Frappe, tiene que cerrar sesión y volver a entrar para que se note.
    - `createSession(...)` (`src/lib/auth.ts`) firma y guarda la cookie propia (`app_session`,
      HMAC-SHA256 con `SESSION_SECRET`, httpOnly, 12h). Frappe no maneja la sesión de la app.
 3. `src/proxy.ts` (reemplazo de `middleware.ts` en Next 16, runtime Node.js) protege todo excepto
@@ -92,7 +99,9 @@ No hay NextAuth ni SDK de Frappe del lado del navegador. El flujo es:
   filters, limit, orderBy})`, `getDoc`, `createDoc`, `updateDoc`, `deleteDoc`, y `callMethod` para
   whitelisted methods (`/api/method/<dotted.path>`). **Este es el punto de extensión del
   template** — cada proyecto agrega acá (o en archivos hermanos) las funciones tipadas para sus
-  propios doctypes, en vez de hacer `fetch()` sueltos por la app.
+  propios doctypes, en vez de hacer `fetch()` sueltos por la app. En este proyecto son
+  `work-orders.ts` (dominio de OT + catálogos + máquina de estados) y `catalogs.ts` (config
+  `CATALOG_DEFS` del ABM).
 - `auth.ts` — `loginToFrappe` (login de usuario final) y `getAppRoleForUser` (mapeo de roles,
   placeholder a customizar).
 
@@ -105,8 +114,10 @@ doctypes.
 Copiado de `ats_app_talent` casi sin cambios (son 100% genéricos, sin acoplamiento a Postgres):
 - `src/components/shell/app-shell.tsx` — decide si la ruta actual es pública (`PUBLIC_PREFIXES`,
   hoy solo `/login`) o va con sidebar completo.
-- `src/components/shell/app-sidebar.tsx` — **genericizado**: `navPrincipal` trae un único ítem de
-  ejemplo (`/dashboard`), `navAdmin` está vacío. Reemplazar `APP_NAME` y estas listas por proyecto.
+- `src/components/shell/app-sidebar.tsx` — `navPrincipal` tiene Dashboard + Órdenes de Trabajo;
+  `navAdmin` tiene un grupo "Configuración" que se expande como acordeón (sub-links generados
+  desde `CATALOG_DEFS`, ver `.claude/PROJECT.md`) — patrón reusable si se agregan más secciones
+  admin. `APP_NAME` sigue en placeholder genérico ("App").
 - `topbar.tsx`, `breadcrumbs.tsx`, `theme-toggle.tsx`, `theme-provider.tsx`, `sidebar-context.tsx`,
   `mobile-menu-button.tsx` — sin cambios respecto a Talent.
 
@@ -116,16 +127,20 @@ Copiado de `ats_app_talent` casi sin cambios (son 100% genéricos, sin acoplamie
 en TypeScript pero rompe en runtime) — para un link con pinta de botón, usar
 `buttonVariants({...})` como `className` de un `<Link>` normal. Componentes ya instalados: `Button`,
 `Badge`, `Avatar`/`AvatarFallback`, `Separator`, `Input`, `Textarea`, `Label`, `Card`, `Table`,
-`DropdownMenu`. Si se agregan más con `npx shadcn@latest add ...`, revisar el código generado antes
-de asumir que se comporta como el shadcn/Radix "clásico".
+`DropdownMenu`, `Toast` (`components/ui/toast.tsx` — `export const toast` + `<Toaster />`, sobre
+`@base-ui/react/toast`). **No hay `Dialog`/`Tabs`/`Select` instalados** — todo lo que sería un
+modal se resolvió como panel `Card` inline, y los combos son `<select>` nativo estilado a mano
+(ver `.claude/PROJECT.md`, sección "Decisiones de arquitectura"). Si se agregan componentes nuevos
+con `npx shadcn@latest add ...`, revisar el código generado antes de asumir que se comporta como
+el shadcn/Radix "clásico".
 
-## Estado actual — qué falta para un proyecto real
+## Estado actual
 
-- `FRAPPE_URL` / `FRAPPE_API_KEY` / `FRAPPE_API_SECRET` en `.env` son placeholders — sin
-  credenciales reales, `/dashboard` muestra el mensaje de error de conexión (comportamiento
-  esperado, ya probado).
-- `getAppRoleForUser` mapea todo a `"member"` salvo `System Manager` — ajustar a los roles reales
-  del cliente.
-- No hay ABM de usuarios ni `/admin/*` construido — `proxy.ts` ya bloquea `/admin/*` a no-admins,
-  pero no hay páginas ahí todavía.
-- No hay tests configurados.
+Este proyecto es la app de Lamicar (taller de reparación de vehículos), sobre el dominio
+`Work Order`/catálogos de Frappe Cloud (`hub.lamicar.app`) — **no** el estado en blanco del
+template. Roles reales (`admin`/`recepcion`/`tecnico`/`facturador`/`auditor`), listado/detalle/
+alta/edición/transiciones de OT, ABM de catálogos y toasts ya están implementados. Ver
+**[.claude/PROJECT.md](.claude/PROJECT.md)** para el detalle completo (qué se construyó, por qué,
+gotchas, y qué falta).
+
+No hay tests configurados en el template todavía.

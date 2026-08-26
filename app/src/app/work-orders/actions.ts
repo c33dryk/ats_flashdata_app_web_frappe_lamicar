@@ -2,18 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { createWorkOrder, type WorkOrder } from "@/lib/frappe/work-orders";
 
 export interface CreateWorkOrderState {
   error: string | null;
-}
-
-function str(formData: FormData, key: string): string | undefined {
-  const value = formData.get(key);
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed === "" ? undefined : trimmed;
 }
 
 export async function createWorkOrderAction(

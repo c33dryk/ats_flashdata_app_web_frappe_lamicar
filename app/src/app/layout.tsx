@@ -1,9 +1,11 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toast } from "@base-ui/react/toast";
 import "./globals.css";
 import { AppShell } from "@/components/shell/app-shell";
 import { ThemeProvider } from "@/components/shell/theme-provider";
+import { Toaster, toast } from "@/components/ui/toast";
 import { getSession } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -39,7 +41,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         style={brandColor ? ({ "--brand": brandColor } as CSSProperties) : undefined}
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AppShell session={session}>{children}</AppShell>
+          <Toast.Provider toastManager={toast}>
+            <AppShell session={session}>{children}</AppShell>
+            <Toaster />
+          </Toast.Provider>
         </ThemeProvider>
       </body>
     </html>

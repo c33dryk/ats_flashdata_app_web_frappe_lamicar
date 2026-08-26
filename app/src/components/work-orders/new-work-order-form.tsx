@@ -57,7 +57,7 @@ export function NewWorkOrderForm({
           <CardHeader>
             <CardTitle>Cliente</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
+          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="col-span-2 space-y-1">
               <Label htmlFor="customer_type_id">Tipo de cliente *</Label>
               <select
@@ -100,7 +100,7 @@ export function NewWorkOrderForm({
           <CardHeader>
             <CardTitle>Vehículo</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
+          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="col-span-2 space-y-1">
               <Label htmlFor="vehicle_type_id">Categoría</Label>
               <select
@@ -144,7 +144,7 @@ export function NewWorkOrderForm({
           <CardHeader>
             <CardTitle>Servicio</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
+          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="service_segment_id">Segmento</Label>
               <select
