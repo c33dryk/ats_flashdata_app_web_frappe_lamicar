@@ -8,6 +8,7 @@ services:
       FRAPPE_API_SECRET: ${FRAPPE_API_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE}
+      BRAND_COLOR: ${BRAND_COLOR}
       NODE_ENV: production
     ports:
       - "${APP_PORT}:3000"

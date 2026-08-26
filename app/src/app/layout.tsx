@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -22,6 +23,10 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const session = await getSession();
+  // Color de marca por cliente/proyecto (ver .env: BRAND_COLOR) — se inyecta acá como CSS
+  // variable en vez de hardcodearlo en globals.css, así cada deploy del template lo cambia sin
+  // tocar código. Sin BRAND_COLOR seteado, --brand cae al fallback definido en globals.css.
+  const brandColor = process.env.BRAND_COLOR;
 
   return (
     <html
@@ -29,7 +34,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex h-full min-h-full antialiased">
+      <body
+        className="flex h-full min-h-full antialiased"
+        style={brandColor ? ({ "--brand": brandColor } as CSSProperties) : undefined}
+      >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <AppShell session={session}>{children}</AppShell>
         </ThemeProvider>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
+  ClipboardList,
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
@@ -40,7 +41,10 @@ function initialsOf(name: string): string {
 
 // Placeholder mínimo — cada proyecto de cliente reemplaza/extiende esta lista con sus propias
 // secciones (igual patrón: href, label, icon).
-const navPrincipal = [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }];
+const navPrincipal = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/work-orders", label: "Órdenes de Trabajo", icon: ClipboardList },
+];
 
 // Vacío por default: agregar acá los links solo-admin del proyecto (gateado por
 // session.role === "admin" más abajo, y por proxy.ts para /admin/*).
@@ -67,7 +71,7 @@ function NavLink({
         "flex flex-row items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
         collapsed && "justify-center px-0",
         active
-          ? "bg-muted font-medium text-foreground"
+          ? "bg-brand/10 font-medium text-brand"
           : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
       )}
     >
@@ -114,7 +118,7 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-3">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2 overflow-hidden">
-              <Boxes className="h-6 w-6 shrink-0 text-foreground" />
+              <Boxes className="h-6 w-6 shrink-0 text-brand" />
               <span className="truncate text-sm font-semibold tracking-tight">{APP_NAME}</span>
             </Link>
           )}

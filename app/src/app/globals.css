@@ -42,6 +42,14 @@
   --sidebar-accent-foreground: oklch(0.21 0.01 260);
   --sidebar-border: oklch(0.91 0.005 260);
   --sidebar-ring: oklch(0.65 0.01 260);
+
+  /* Color de marca por cliente/proyecto — sobreescrito inline en <body> desde BRAND_COLOR
+     (.env), ver layout.tsx. --brand acá es el fallback si la env var no está seteada.
+     --brand-foreground queda fijo (no cambia con light/dark): asume que BRAND_COLOR suele ser
+     un tono claro/saturado (ej. un verde de marca) sobre el que va texto oscuro — igual que en
+     el dashboard de referencia. Si el proyecto usa un brand color oscuro, ajustar acá a mano. */
+  --brand: var(--foreground);
+  --brand-foreground: oklch(0.19 0.01 260);
 }
 
 .dark {
@@ -111,6 +119,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

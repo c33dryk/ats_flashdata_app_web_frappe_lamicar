@@ -1,0 +1,81 @@
+import { redirect } from "next/navigation";
+import { Topbar } from "@/components/shell/topbar";
+import { Breadcrumbs } from "@/components/shell/breadcrumbs";
+import { NewWorkOrderForm } from "@/components/work-orders/new-work-order-form";
+import { getSession } from "@/lib/auth";
+import { FrappeApiError } from "@/lib/frappe/client";
+import {
+  getCustomerTypes,
+  getOperators,
+  getServiceSegments,
+  getServiceTypes,
+  getVehicleTypes,
+} from "@/lib/frappe/work-orders";
+
+export default async function NewWorkOrderPage() {
+  const session = await getSession();
+  if (!session || (session.role !== "admin" && session.role !== "recepcion")) {
+    redirect("/work-orders");
+  }
+
+  let catalogs: {
+    customerTypes: Awaited<ReturnType<typeof getCustomerTypes>>;
+    vehicleTypes: Awaited<ReturnType<typeof getVehicleTypes>>;
+    serviceSegments: Awaited<ReturnType<typeof getServiceSegments>>;
+    serviceTypes: Awaited<ReturnType<typeof getServiceTypes>>;
+    operators: Awaited<ReturnType<typeof getOperators>>;
+  } | null = null;
+  let errorMessage: string | null = null;
+
+  try {
+    const [customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators] =
+      await Promise.all([
+        getCustomerTypes(),
+        getVehicleTypes(),
+        getServiceSegments(),
+        getServiceTypes(),
+        getOperators(),
+      ]);
+    catalogs = { customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators };
+  } catch (err) {
+    errorMessage =
+      err instanceof FrappeApiError
+        ? `No se pudo conectar con Frappe (${err.status}). Revisá FRAPPE_URL / FRAPPE_API_KEY / FRAPPE_API_SECRET en .env.`
+        : "No se pudo conectar con Frappe. Revisá la configuración en .env.";
+  }
+
+  return (
+    <div className="flex flex-1 flex-col">
+      <Topbar>
+        <Breadcrumbs
+          items={[{ label: "Órdenes de Trabajo", href: "/work-orders" }, { label: "Nueva" }]}
+        />
+      </Topbar>
+
+      <div className="flex-1 space-y-4 p-6">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Nueva Orden de Trabajo</h1>
+          <p className="text-sm text-muted-foreground">
+            Completá los datos del cliente, el vehículo y el servicio.
+          </p>
+        </div>
+
+        {errorMessage ? (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {errorMessage}
+          </p>
+        ) : (
+          catalogs && (
+            <NewWorkOrderForm
+              customerTypes={catalogs.customerTypes}
+              vehicleTypes={catalogs.vehicleTypes}
+              serviceSegments={catalogs.serviceSegments}
+              serviceTypes={catalogs.serviceTypes}
+              operators={catalogs.operators}
+            />
+          )
+        )}
+      </div>
+    </div>
+  );
+}

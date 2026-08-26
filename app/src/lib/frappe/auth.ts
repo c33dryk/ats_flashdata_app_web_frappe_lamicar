@@ -32,16 +32,29 @@ interface FrappeUser {
   roles?: Array<{ role: string }>;
 }
 
-// Placeholder de mapeo Frappe roles -> rol de la app. CUSTOMIZAR por proyecto: acá es donde cada
-// cliente define qué rol de Frappe (o qué User Type / Role Profile) equivale a "admin" en esta app.
+// Mapeo Roles de Frappe -> AppRole del proyecto Lamicar. Un usuario puede tener varios roles de
+// Frappe asignados; si tiene más de uno de los 5 propios de este proyecto, gana el de mayor
+// privilegio según FRAPPE_ROLE_PRIORITY. Sin ninguno de los 5, cae a "auditor" (el de menor
+// privilegio) en vez de romper — evita dejar afuera a un usuario mal configurado en Frappe.
 //
 // Usa GET /api/resource/User/<email> (campo child table `roles`) en vez de listar el doctype
 // "Has Role" directo: Frappe deniega check_select_permission sobre child tables aunque tengan un
 // Custom DocPerm propio. El service account necesita permiso Read sobre "User" — en Frappe, el
 // campo `roles` de User vive en permlevel 1, así que además del Read en permlevel 0 hace falta un
 // segundo Custom DocPerm en permlevel 1 para ese rol, o el campo vuelve vacío en la respuesta.
+const FRAPPE_ROLE_PRIORITY: Array<[string, AppRole]> = [
+  ["WO Admin", "admin"],
+  ["WO Recepcion", "recepcion"],
+  ["WO Tecnico", "tecnico"],
+  ["WO Facturador", "facturador"],
+  ["WO Auditor", "auditor"],
+];
+
 export async function getAppRoleForUser(userEmail: string): Promise<AppRole> {
   const user = await getDoc<FrappeUser>("User", userEmail);
-  const roles = (user.roles ?? []).map((r) => r.role);
-  return roles.includes("System Manager") ? "admin" : "member";
+  const roles = new Set((user.roles ?? []).map((r) => r.role));
+  for (const [frappeRole, appRole] of FRAPPE_ROLE_PRIORITY) {
+    if (roles.has(frappeRole)) return appRole;
+  }
+  return "auditor";
 }
