@@ -12,7 +12,7 @@ import path from "node:path";
 loadEnvConfig(path.resolve(__dirname, ".."), process.env.NODE_ENV !== "production", console, true);
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone",
 };
 
 export default nextConfig;

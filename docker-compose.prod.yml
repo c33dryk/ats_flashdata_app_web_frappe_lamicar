@@ -1,0 +1,60 @@
+# =============================================================================
+# LAMICAR PORTAL (ats_app_web_frappe) - Docker Compose PRODUCCIÓN
+# =============================================================================
+# Uso: VersatileHub (Traefik + portal.lamicar.app). NO usar para desarrollo local
+# — para eso está docker-compose.yml (dev-style, expone puerto al host).
+#
+# No hay servicio de base de datos propio: los datos viven en Frappe (hub.lamicar.app,
+# mismo host), consumidos vía API REST (ver app/src/lib/frappe/).
+# =============================================================================
+
+services:
+  lamicar-portal:
+    build: ./app
+    container_name: versatile-lamicar-portal-app
+    restart: unless-stopped
+    environment:
+      FRAPPE_URL: ${FRAPPE_URL}
+      FRAPPE_API_KEY: ${FRAPPE_API_KEY}
+      FRAPPE_API_SECRET: ${FRAPPE_API_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      NODE_ENV: production
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      # Next.js standalone bindea a $HOSTNAME, que Docker setea al container ID por default;
+      # eso resuelve a una sola IP de una sola red y Traefik (en la red "web") no puede
+      # conectar. Forzar 0.0.0.0 para escuchar en todas las interfaces (mismo gotcha que Talent).
+      HOSTNAME: 0.0.0.0
+    expose:
+      - "${LAMICAR_PORTAL_APP_PORT:-3000}"
+    labels:
+      - "traefik.enable=true"
+
+      # HTTP -> HTTPS redirect
+      - "traefik.http.routers.lamicar-portal-http.rule=Host(`${LAMICAR_PORTAL_DOMAIN}`)"
+      - "traefik.http.routers.lamicar-portal-http.entrypoints=web"
+      - "traefik.http.middlewares.lamicar-portal-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.lamicar-portal-redirect.redirectscheme.permanent=true"
+      - "traefik.http.routers.lamicar-portal-http.middlewares=lamicar-portal-redirect"
+
+      # HTTPS — certresolver fijo en "letsencrypt" (HTTP-01), NO el default de Traefik
+      # (cloudflare/DNS-01): lamicar.app vive en una cuenta de Cloudflare distinta a la que
+      # Traefik tiene configurada globalmente (mismo motivo que lamicar-frontend en el compose
+      # raíz — ver CLAUDE.md, sección Lamicar).
+      - "traefik.http.routers.lamicar-portal.rule=Host(`${LAMICAR_PORTAL_DOMAIN}`)"
+      - "traefik.http.routers.lamicar-portal.entrypoints=websecure"
+      - "traefik.http.routers.lamicar-portal.tls=true"
+      - "traefik.http.routers.lamicar-portal.tls.certresolver=letsencrypt"
+
+      - "traefik.http.services.lamicar-portal.loadbalancer.server.port=${LAMICAR_PORTAL_APP_PORT:-3000}"
+      - "traefik.docker.network=web"
+    networks:
+      - web
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  web:
+    external: true
+    name: web
