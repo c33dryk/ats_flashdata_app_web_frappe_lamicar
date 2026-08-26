@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --radius: 0.5rem;
 
   --background: oklch(0.99 0 0);
@@ -53,6 +54,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.16 0.005 260);
   --foreground: oklch(0.95 0.002 260);
 
@@ -89,6 +91,13 @@
   --sidebar-accent-foreground: oklch(0.95 0.002 260);
   --sidebar-border: oklch(0.24 0.006 260);
   --sidebar-ring: oklch(0.5 0.01 260);
+}
+
+/* color-scheme no alcanza para forzar el listbox nativo del <select> en todos los navegadores
+   (Chromium en Windows lo ignora parcialmente) — se fuerza el fondo/texto de <option> a mano. */
+select option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
 }
 
 @theme inline {
