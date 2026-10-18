@@ -29,8 +29,8 @@ import { StatusBadge } from "@/components/work-orders/status-badge";
 import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
 import { labelOf, type DashboardCatalogs } from "@/lib/dashboard-metrics";
 import { EVIDENCE_LOCKED_STATUSES, requirementCount } from "@/lib/evidence";
-import { fmtMoney } from "@/lib/format";
-import { can } from "@/lib/permissions";
+import { fmtMileage, fmtMoney } from "@/lib/format";
+import { can, canAccessPath } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/auth-shared";
 import type { WoEvidencePolicy, WorkOrder, WorkOrderStatus } from "@/lib/frappe/work-orders";
@@ -80,7 +80,10 @@ export function WorkOrderPanel({
   catalogs,
   initialAction,
   onClose,
+  section = "Operaciones",
 }: {
+  /** Pantalla desde donde se abrió (primer tramo de la ruta del panel). */
+  section?: string;
   name: string;
   role: AppRole;
   catalogs: DashboardCatalogs;
@@ -124,6 +127,7 @@ export function WorkOrderPanel({
   async function copyLink() {
     const url = new URL(window.location.href);
     url.searchParams.set("ot", name);
+    url.searchParams.delete("filtro");
     try {
       await navigator.clipboard.writeText(url.toString());
       toast.add({ title: "Link copiado", type: "success" });
@@ -146,21 +150,23 @@ export function WorkOrderPanel({
         {/* Barra superior: misma altura que el Topbar de la app (h-14) para que las líneas coincidan */}
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3">
           <nav className="flex min-w-0 flex-1 items-center gap-1 text-sm text-muted-foreground" aria-label="Ruta">
-            <span className="hidden sm:inline">Operaciones</span>
+            <span className="hidden sm:inline">{section}</span>
             <ChevronRight className="hidden size-3.5 sm:inline" />
             <span className="truncate font-medium text-foreground">{name}</span>
           </nav>
           <Button type="button" variant="ghost" size="icon-sm" onClick={copyLink} title="Copiar link" aria-label="Copiar link">
             <Link2 className="size-4" />
           </Button>
-          <Link
-            href={`/work-orders/${name}`}
-            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-            title="Abrir en página completa"
-            aria-label="Abrir en página completa"
-          >
-            <ExternalLink className="size-4" />
-          </Link>
+          {canAccessPath(role, "/work-orders") && (
+            <Link
+              href={`/work-orders/${name}`}
+              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              title="Abrir en página completa"
+              aria-label="Abrir en página completa"
+            >
+              <ExternalLink className="size-4" />
+            </Link>
+          )}
           <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} title="Cerrar (Esc)" aria-label="Cerrar">
             <X className="size-4" />
           </Button>
@@ -237,7 +243,7 @@ export function WorkOrderPanel({
                       labelOf(catalogs.vehicleTypes, wo.vehicle_type_id),
                       wo.vehicle_year,
                       wo.vehicle_color,
-                      wo.vehicle_mileage && `${wo.vehicle_mileage} km`,
+                      fmtMileage(wo.vehicle_mileage),
                     ]
                       .filter(Boolean)
                       .join(" · ") || "—"}

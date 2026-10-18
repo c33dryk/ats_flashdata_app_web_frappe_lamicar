@@ -139,6 +139,19 @@ relevante ahí, para no tener que releerlo de nuevo:
     1920px JPEG 0.82) y subida en cola a `POST /api/work-orders/:id/evidence` (route handler, no
     Server Action). El requisito se guarda en `zone` (con fallback a prefijo `[CODE]` en `notes`
     si Frappe lo rechaza) — reglas en `lib/evidence.ts`.
+20. **Facturación** (`/facturacion`, `components/billing/billing-board.tsx`): Entregadas por
+    facturar + Facturadas, indicadores que filtran (por facturar, facturado este mes,
+    facturadas, facturadas sin PDF), selección múltiple → **expedientes ZIP reales**
+    (`GET /api/expedientes?ot=...`, fflate: resumen.txt + fotos/firma/factura bajadas de Frappe;
+    URLs externas solo listadas, para evitar SSRF; máx. 50 OTs). "Facturar" abre el mismo panel
+    lateral con el panel de factura, que ahora adjunta el **PDF de la factura** (se sube como
+    evidencia `type=invoice` y la transición lo asocia validando que sea de esa OT → 
+    `invoice_file_url`). Desde acá el **facturador ya no ve Operaciones ni /work-orders** (como
+    el MVP); su Dashboard linkea a /facturacion.
+21. **Remitos** (`/remitos`, `/remitos/[id]`): listado de entregas firmadas + remito imprimible
+    (hoja blanca, logo, cliente, vehículo, trabajos sin precios, fotos "después", texto de
+    conformidad y firma real). "Imprimir / Guardar PDF" usa el diálogo del navegador; el chrome
+    de la app tiene `print:hidden`. En Frappe sería un Print Format.
 19. **Logo Lamicar** (`public/lamicar-logo.png`, recortado del original de lamicar.ar): sidebar,
     topbar en mobile y login; en fondos oscuros va sobre pastilla blanca (el azul no contrasta).
 

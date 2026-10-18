@@ -175,3 +175,14 @@ input[type="password"]::-ms-clear {
   -webkit-box-shadow: 0 0 0 1000px #16161d inset;
   transition: background-color 9999s ease-out 0s;
 }
+
+/* Impresión (remitos): el layout de la app es de alto fijo con scroll interno; al imprimir hay que
+   liberar alto y overflow para que el documento ocupe las páginas que necesite. */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+}

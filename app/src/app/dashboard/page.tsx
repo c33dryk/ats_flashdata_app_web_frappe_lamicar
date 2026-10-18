@@ -12,6 +12,8 @@ import {
   type DashboardWorkOrder,
 } from "@/lib/frappe/work-orders";
 import { todayInShopTZ } from "@/lib/format";
+import { getSession } from "@/lib/auth";
+import { canAccessPath } from "@/lib/permissions";
 
 // Dashboard principal (todos los roles). Dos vistas, como en el MVP: "Operativo" (foto del taller
 // hoy) y "Gestión" (evolución en el tiempo con filtros cruzados). La vista va en la URL
@@ -28,6 +30,8 @@ export default async function DashboardPage({
 }) {
   const { vista } = await searchParams;
   const view = VIEWS.find((v) => v.key === vista) ?? VIEWS[0];
+  const session = await getSession();
+  const shopAccess = !!session && canAccessPath(session.role, "/operaciones");
 
   let rows: DashboardWorkOrder[] = [];
   let catalogs: DashboardCatalogs | null = null;
@@ -73,7 +77,7 @@ export default async function DashboardPage({
             {errorMessage}
           </p>
         ) : view.key === "operativo" ? (
-          <OperationalDashboard rows={rows} catalogs={catalogs} />
+          <OperationalDashboard rows={rows} catalogs={catalogs} shopAccess={shopAccess} />
         ) : (
           <ManagementDashboard rows={rows} catalogs={catalogs} todayISO={todayInShopTZ()} />
         )}

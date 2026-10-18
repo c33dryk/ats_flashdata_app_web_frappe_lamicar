@@ -15,6 +15,8 @@ import {
   ChevronsUpDown,
   Settings,
   SquareKanban,
+  Receipt,
+  FileSignature,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type SessionPayload } from "@/lib/auth-shared";
@@ -50,6 +52,8 @@ const navPrincipal = [
   { href: "/operaciones", label: "Operaciones", icon: SquareKanban },
   // Versión anterior del listado — se mantiene hasta validar /operaciones.
   { href: "/work-orders", label: "Órdenes de Trabajo", icon: ClipboardList },
+  { href: "/facturacion", label: "Facturación", icon: Receipt },
+  { href: "/remitos", label: "Remitos", icon: FileSignature },
 ];
 
 // Links solo-admin del proyecto (gateado por canAccessPath más abajo, y por proxy.ts para
@@ -144,14 +148,14 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
     <>
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden print:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:translate-x-0 lg:transition-[width]",
+          "print:hidden fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col border-r border-border bg-sidebar transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:translate-x-0 lg:transition-[width]",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           collapsed ? "lg:w-14" : "lg:w-60"
         )}

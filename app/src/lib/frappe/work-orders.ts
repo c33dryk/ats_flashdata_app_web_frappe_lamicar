@@ -249,6 +249,54 @@ export function getDashboardWorkOrders() {
   });
 }
 
+// Filas de /facturacion: lo entregado (por facturar) y lo ya facturado, con los campos de entrega
+// y factura. Al migrar a Frappe: Report "Facturación" filtrado por estado.
+export type BillingWorkOrder = Pick<
+  WorkOrder,
+  | "name"
+  | "status"
+  | "siniestro"
+  | "customer_name"
+  | "customer_type_id"
+  | "license_plate"
+  | "vehicle_brand_model"
+  | "total_net"
+  | "delivery_date"
+  | "delivery_signed_at"
+  | "delivery_signed_by"
+  | "invoice_number"
+  | "invoice_date"
+  | "invoice_amount"
+  | "invoice_file_url"
+  | "modified"
+>;
+
+export function getBillingWorkOrders() {
+  return getList<BillingWorkOrder>("Work Order", {
+    fields: [
+      "name",
+      "status",
+      "siniestro",
+      "customer_name",
+      "customer_type_id",
+      "license_plate",
+      "vehicle_brand_model",
+      "total_net",
+      "delivery_date",
+      "delivery_signed_at",
+      "delivery_signed_by",
+      "invoice_number",
+      "invoice_date",
+      "invoice_amount",
+      "invoice_file_url",
+      "modified",
+    ],
+    filters: [["status", "in", ["Entregada", "Facturada"]]],
+    limit: 0,
+    orderBy: "modified desc",
+  });
+}
+
 export function getWorkOrder(name: string) {
   return getDoc<WorkOrder>("Work Order", name);
 }

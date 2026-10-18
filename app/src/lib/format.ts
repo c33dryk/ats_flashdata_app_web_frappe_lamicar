@@ -28,3 +28,9 @@ export function todayInShopTZ(): string {
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(new Date());
 }
+
+/** Kilometraje para mostrar: el campo es texto libre y a veces ya trae "km" ("14.500 km"). */
+export function fmtMileage(value?: string): string | undefined {
+  if (!value?.trim()) return undefined;
+  return /km/i.test(value) ? value.trim() : `${value.trim()} km`;
+}

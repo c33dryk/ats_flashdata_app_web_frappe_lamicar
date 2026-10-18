@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   type WorkOrderCommand,
 } from "@/lib/frappe/work-orders";
 import type { AppRole } from "@/lib/auth-shared";
+import { compressImage } from "@/lib/image-compress";
 
 const COMMAND_LABELS: Record<WorkOrderCommand, string> = {
   start: "Iniciar",
@@ -132,6 +133,8 @@ export function WorkOrderActions({
 
       {activePanel === "invoice" && (
         <InvoicePanel
+          orderName={workOrder.name}
+          modified={workOrder.modified ?? ""}
           defaultAmount={workOrder.total_net}
           pending={pending}
           onCancel={() => setActivePanel(null)}
@@ -140,7 +143,12 @@ export function WorkOrderActions({
             fd.set("invoice_number", fields.number);
             fd.set("invoice_date", fields.date);
             fd.set("invoice_amount", fields.amount);
-            dispatch(fd);
+            // Si se adjuntó el PDF, subirlo cambió `modified`: la transición usa el nuevo.
+            if (fields.file) {
+              fd.set("invoice_file_url", fields.file.url);
+              fd.set("expected_modified", fields.file.modified);
+            }
+            startTransition(() => dispatch(fd));
             setActivePanel(null);
           }}
         />
@@ -211,21 +219,62 @@ function ReasonPanel({
 }
 
 function InvoicePanel({
+  orderName,
+  modified,
   defaultAmount,
   pending,
   onConfirm,
   onCancel,
 }: {
+  orderName: string;
+  modified: string;
   defaultAmount?: number;
   pending: boolean;
-  onConfirm: (fields: { number: string; date: string; amount: string }) => void;
+  onConfirm: (fields: {
+    number: string;
+    date: string;
+    amount: string;
+    file?: { url: string; modified: string };
+  }) => void;
   onCancel: () => void;
 }) {
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState(defaultAmount ? String(defaultAmount) : "");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const valid = number.trim() && date && Number(amount) > 0;
+
+  // El PDF va primero por el route de evidencia (las Server Actions cortan en 1MB); la
+  // transición después lo referencia por URL y el server verifica que sea de esta OT.
+  async function confirm() {
+    const fields = { number: number.trim(), date, amount };
+    if (!file) return onConfirm(fields);
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.set("file", await compressImage(file));
+      fd.set("type", "invoice");
+      fd.set("notes", `Factura ${fields.number}`);
+      fd.set("expected_modified", modified);
+      const res = await fetch(`/api/work-orders/${encodeURIComponent(orderName)}/evidence`, {
+        method: "POST",
+        body: fd,
+      });
+      const json = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
+      const wo = json?.workOrder as WorkOrder | undefined;
+      const row = wo?.evidence?.filter((e) => e.type === "invoice").pop();
+      if (!res.ok || !wo?.modified || !row) throw new Error(json?.error ?? "No se pudo subir el archivo.");
+      onConfirm({ ...fields, file: { url: row.url, modified: wo.modified } });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "No se pudo subir el archivo.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <Card>
@@ -255,15 +304,24 @@ function InvoicePanel({
             onChange={(e) => setAmount(e.target.value)}
           />
         </div>
-        <div className="col-span-3 flex gap-2">
-          <Button
-            type="button"
-            disabled={pending || !valid}
-            onClick={() => onConfirm({ number: number.trim(), date, amount })}
-          >
-            Confirmar
+        <div className="space-y-1 sm:col-span-3">
+          <Label htmlFor="invoice_file">PDF de la factura</Label>
+          <Input
+            id="invoice_file"
+            type="file"
+            accept="application/pdf,image/*"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Opcional, pero queda en el expediente de la OT (ZIP de Facturación).
+          </p>
+          {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+        </div>
+        <div className="flex gap-2 sm:col-span-3">
+          <Button type="button" disabled={pending || uploading || !valid} onClick={confirm}>
+            {uploading ? "Subiendo PDF…" : "Confirmar"}
           </Button>
-          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+          <Button type="button" variant="outline" disabled={pending || uploading} onClick={onCancel}>
             Cancelar
           </Button>
         </div>

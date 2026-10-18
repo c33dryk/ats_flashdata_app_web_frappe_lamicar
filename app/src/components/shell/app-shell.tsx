@@ -26,7 +26,7 @@ export function AppShell({
   return (
     <SidebarProvider>
       <AppSidebar session={session} />
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto print:overflow-visible">{children}</div>
     </SidebarProvider>
   );
 }

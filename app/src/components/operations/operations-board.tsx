@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { LayoutList, Plus, Search, SquareKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -9,6 +8,7 @@ import { toast } from "@/components/ui/toast";
 import { NewWorkOrderForm } from "@/components/work-orders/new-work-order-form";
 import { KanbanBoard } from "./kanban-board";
 import { WorkOrderPanel } from "./work-order-panel";
+import { useOrderPanel } from "./use-order-panel";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { nativeSelectClassName } from "@/components/ui/native-select";
@@ -73,27 +73,7 @@ export function OperationsBoard({
   const [view, setView] = useState<OperationsView>(initialView);
   const [creating, setCreating] = useState(false);
 
-  // OT abierta en el panel lateral: vive en la URL (?ot=) — se puede compartir el link y "atrás"
-  // cierra el panel. pushState/replaceState se sincronizan con useSearchParams sin ir al server.
-  const openOt = useSearchParams().get("ot");
-  const [panelAction, setPanelAction] = useState<string | undefined>();
-  const openOrder = useCallback((name: string, action?: string) => {
-    setPanelAction(action);
-    const url = new URL(window.location.href);
-    url.searchParams.set("ot", name);
-    window.history.pushState(null, "", url);
-  }, []);
-  const closeOrder = useCallback(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("ot");
-    window.history.replaceState(null, "", url);
-  }, []);
-  /** Click normal abre el panel; Ctrl/Cmd/medio-click deja que el link abra otra pestaña. */
-  const onOrderLinkClick = (e: React.MouseEvent, name: string) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    openOrder(name);
-  };
+  const { openOt, panelAction, openOrder, closeOrder, onOrderLinkClick } = useOrderPanel();
   const [query, setQuery] = useState("");
   // Filtro de estado: una clave de OPERATIONS_FILTERS (indicadores) o un estado suelto (chips).
   const [filter, setFilter] = useState(
