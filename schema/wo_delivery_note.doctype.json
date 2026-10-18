@@ -1,0 +1,32 @@
+{
+  "name": "WO Delivery Note",
+  "module": "Lamicar Services",
+  "custom": 1,
+  "autoname": "format:R-{point_of_sale}-{########}",
+  "naming_rule": "Expression",
+  "title_field": "work_order",
+  "search_fields": "work_order,signed_by",
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "track_changes": 1,
+  "fields": [
+    { "fieldname": "point_of_sale", "label": "Punto de venta", "fieldtype": "Data", "reqd": 1, "read_only": 1, "description": "Lo completa la app con el punto de venta de la sucursal (WO Branch.point_of_sale)" },
+    { "fieldname": "branch_id", "label": "Sucursal", "fieldtype": "Link", "options": "WO Branch", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1 },
+    { "fieldname": "work_order", "label": "Orden de trabajo", "fieldtype": "Link", "options": "Work Order", "reqd": 1, "in_list_view": 1 },
+    { "fieldname": "delivered_at", "label": "Fecha y hora de entrega", "fieldtype": "Datetime", "reqd": 1, "in_list_view": 1 },
+    { "fieldname": "status", "label": "Estado", "fieldtype": "Select", "options": "Emitido\nAnulado", "default": "Emitido", "in_standard_filter": 1 },
+    { "fieldname": "col_firma", "fieldtype": "Column Break" },
+    { "fieldname": "signed_by", "label": "Recibió (aclaración)", "fieldtype": "Data", "reqd": 1 },
+    { "fieldname": "signature_url", "label": "Firma", "fieldtype": "Attach Image" },
+    { "fieldname": "cancel_reason", "label": "Motivo de anulación", "fieldtype": "Small Text", "depends_on": "eval:doc.status=='Anulado'" },
+    { "fieldname": "notes", "label": "Observaciones", "fieldtype": "Small Text" }
+  ],
+  "permissions": [
+    { "role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1 },
+    { "role": "WO Admin", "read": 1, "write": 1, "create": 1 },
+    { "role": "WO Recepcion", "read": 1, "write": 1, "create": 1 },
+    { "role": "WO Tecnico", "read": 1 },
+    { "role": "WO Facturador", "read": 1 },
+    { "role": "WO Auditor", "read": 1 }
+  ]
+}

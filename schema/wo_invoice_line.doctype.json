@@ -1,0 +1,12 @@
+{
+  "name": "WO Invoice Line",
+  "module": "Lamicar Services",
+  "custom": 1,
+  "istable": 1,
+  "editable_grid": 1,
+  "fields": [
+    { "fieldname": "work_order", "label": "Orden de trabajo", "fieldtype": "Link", "options": "Work Order", "reqd": 1, "in_list_view": 1 },
+    { "fieldname": "description", "label": "Descripción", "fieldtype": "Data", "in_list_view": 1 },
+    { "fieldname": "amount_net", "label": "Importe neto imputado", "fieldtype": "Currency", "reqd": 1, "in_list_view": 1 }
+  ]
+}
