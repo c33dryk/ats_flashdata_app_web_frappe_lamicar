@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Building2,
   Calendar,
   Car,
   ChevronRight,
@@ -213,7 +214,10 @@ export function WorkOrderPanel({
 
                 {/* Propiedades (filas con ícono, estilo ClickUp) */}
                 <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-                  <Prop icon={Wrench} label="Técnico" value={labelOf(catalogs.operators, wo.assigned_operator_id) ?? "Sin asignar"} />
+                  {catalogs.branches.length > 0 && (
+                  <Prop icon={Building2} label="Sucursal" value={labelOf(catalogs.branches, wo.branch_id) ?? "—"} />
+                )}
+                <Prop icon={Wrench} label="Técnico" value={labelOf(catalogs.operators, wo.assigned_operator_id) ?? "Sin asignar"} />
                   <Prop
                     icon={ClipboardList}
                     label="Servicio"

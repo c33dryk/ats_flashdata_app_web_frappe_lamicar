@@ -5,7 +5,7 @@ import { CatalogRowForm } from "@/components/admin/catalog-row-form";
 import { EvidencePolicyForm } from "@/components/admin/evidence-policy-form";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { FrappeApiError } from "@/lib/frappe/client";
-import { getCustomerTypes, getServiceSegments } from "@/lib/frappe/work-orders";
+import { getBranches, getCustomerTypes, getServiceSegments } from "@/lib/frappe/work-orders";
 
 export default async function NewCatalogRowPage({
   params,
@@ -19,13 +19,14 @@ export default async function NewCatalogRowPage({
   const isEvidencePolicies = catalogKey === "evidence-policies";
 
   let segmentOptions: Awaited<ReturnType<typeof getServiceSegments>> = [];
+  let branchOptions: Awaited<ReturnType<typeof getBranches>> = [];
   let customerTypes: Awaited<ReturnType<typeof getCustomerTypes>> = [];
   let errorMessage: string | null = null;
   try {
     if (isEvidencePolicies) {
       customerTypes = await getCustomerTypes();
     } else {
-      segmentOptions = await getServiceSegments();
+      [segmentOptions, branchOptions] = await Promise.all([getServiceSegments(), getBranches()]);
     }
   } catch (err) {
     errorMessage =
@@ -58,7 +59,7 @@ export default async function NewCatalogRowPage({
         ) : isEvidencePolicies ? (
           <EvidencePolicyForm customerTypes={customerTypes} />
         ) : (
-          <CatalogRowForm def={def} segmentOptions={segmentOptions} />
+          <CatalogRowForm def={def} segmentOptions={segmentOptions} branchOptions={branchOptions} />
         )}
       </div>
     </div>

@@ -80,6 +80,7 @@ export function OperationsBoard({
     initialFilter && resolveOperationsFilter(initialFilter, WORK_ORDER_STATUSES) ? initialFilter : ""
   );
   const [segment, setSegment] = useState("");
+  const [branch, setBranch] = useState("");
   const filterStatuses = resolveOperationsFilter(filter, WORK_ORDER_STATUSES);
 
   // Vista y filtro van a la URL (linkeable, sobrevive a refresh) sin volver a pedir datos al server.
@@ -107,19 +108,20 @@ export function OperationsBoard({
     return rows.filter(
       (w) =>
         (!segment || w.service_segment_id === segment) &&
+        (!branch || w.branch_id === branch) &&
         (!q ||
           [w.name, w.customer_name, w.license_plate, w.vehicle_brand_model, w.siniestro]
             .filter(Boolean)
             .some((v) => v!.toLowerCase().includes(q)))
     );
-  }, [rows, query, segment]);
+  }, [rows, query, segment, branch]);
   const listRows = filterStatuses ? searched.filter((w) => filterStatuses.includes(w.status)) : searched;
   const kanbanColumns = filterStatuses
     ? KANBAN_COLUMNS.filter((c) => filterStatuses.includes(c))
     : KANBAN_COLUMNS;
 
   const countBy = (s: WorkOrderStatus) => rows.filter((w) => w.status === s).length;
-  const hasFilters = !!(query.trim() || filter || segment);
+  const hasFilters = !!(query.trim() || filter || segment || branch);
 
   const indicators = [
     {
@@ -226,12 +228,28 @@ export function OperationsBoard({
             </option>
           ))}
         </select>
+        {catalogs.branches.length > 0 && (
+          <select
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+            className={cn(nativeSelectClassName, "w-auto min-w-40")}
+            aria-label="Sucursal"
+          >
+            <option value="">Todas las sucursales</option>
+            {catalogs.branches.map((b) => (
+              <option key={b.key} value={b.key}>
+                {b.label}
+              </option>
+            ))}
+          </select>
+        )}
         {hasFilters && (
           <button
             type="button"
             onClick={() => {
               setQuery("");
               setSegment("");
+              setBranch("");
               applyFilter("");
             }}
             className="text-xs font-medium text-destructive hover:underline"

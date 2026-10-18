@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import { createWorkOrderAction, type CreateWorkOrderState } from "@/app/work-orders/actions";
 import type {
+  WoBranch,
   WoCustomerType,
   WoOperator,
   WoServiceSegment,
@@ -27,6 +28,7 @@ export function NewWorkOrderForm({
   serviceSegments,
   serviceTypes,
   operators,
+  branches = [],
   onCreated,
   onCancel,
 }: {
@@ -35,6 +37,8 @@ export function NewWorkOrderForm({
   serviceSegments: WoServiceSegment[];
   serviceTypes: WoServiceType[];
   operators: WoOperator[];
+  /** Sucursales activas: si hay al menos una, elegir sucursal es obligatorio. */
+  branches?: WoBranch[];
   /** Si se pasa, el form se queda en la pantalla (modal) y avisa la OT creada en vez de navegar. */
   onCreated?: (name: string) => void;
   /** Si se pasa, "Cancelar" llama esto (cerrar modal) en vez de volver a /work-orders. */
@@ -201,6 +205,25 @@ export function NewWorkOrderForm({
                 ))}
               </select>
             </div>
+            {branches.length > 0 && (
+              <div className="space-y-1">
+                <Label htmlFor="branch_id">Sucursal{true ? " *" : ""}</Label>
+                <select
+                  id="branch_id"
+                  name="branch_id"
+                  defaultValue=""
+                  required={true}
+                  className={selectClassName}
+                >
+                  <option value="">{true ? "Elegí una sucursal" : "Sin sucursal"}</option>
+                  {branches.map((b) => (
+                    <option key={b.name} value={b.name}>
+                      {b.branch_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="col-span-2 space-y-1">
               <Label htmlFor="description">Descripción del trabajo</Label>
               <Textarea id="description" name="description" rows={4} />

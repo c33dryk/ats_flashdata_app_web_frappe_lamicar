@@ -75,6 +75,7 @@ export interface WorkOrder {
   service_type_id?: string;
   description?: string;
   assigned_operator_id?: string;
+  branch_id?: string; // Link -> WO Branch (sucursal)
   pending_reason?: string;
 
   items?: WorkOrderItem[];
@@ -145,8 +146,20 @@ export interface WoOperator {
   employee_id: string;
   full_name: string;
   specialty_segment?: string;
+  branch_id?: string; // Link -> WO Branch
   phone?: string;
   system_user?: string;
+  is_active?: 0 | 1;
+}
+
+export interface WoBranch {
+  name: string; // = code (autoname field:code)
+  code: string;
+  branch_name: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  email?: string;
   is_active?: 0 | 1;
 }
 
@@ -184,6 +197,7 @@ const WORK_ORDER_LIST_FIELDS = [
   "service_segment_id",
   "service_type_id",
   "assigned_operator_id",
+  "branch_id",
   "total_net",
   "row_version",
   "modified",
@@ -216,6 +230,7 @@ export type DashboardWorkOrder = Pick<
   | "service_segment_id"
   | "service_type_id"
   | "assigned_operator_id"
+  | "branch_id"
   | "description"
   | "total_net"
   | "invoice_amount"
@@ -238,6 +253,7 @@ export function getDashboardWorkOrders() {
       "service_segment_id",
       "service_type_id",
       "assigned_operator_id",
+      "branch_id",
       "description",
       "total_net",
       "invoice_amount",
@@ -355,9 +371,18 @@ export function getServiceTypes(segmentCode?: string) {
 export function getOperators() {
   return getList<WoOperator>("WO Operator", {
     limit: 0, // catálogo completo: sin limit, Frappe corta en 20 filas
-    fields: ["name", "employee_id", "full_name", "specialty_segment", "phone", "system_user", "is_active"],
+    fields: ["name", "employee_id", "full_name", "specialty_segment", "branch_id", "phone", "system_user", "is_active"],
     filters: [["is_active", "=", 1]],
     orderBy: "full_name asc",
+  });
+}
+
+export function getBranches() {
+  return getList<WoBranch>("WO Branch", {
+    limit: 0,
+    fields: ["name", "code", "branch_name", "address", "city", "phone", "email", "is_active"],
+    filters: [["is_active", "=", 1]],
+    orderBy: "branch_name asc",
   });
 }
 
@@ -463,23 +488,25 @@ export interface RawCatalogs {
   serviceSegments: WoServiceSegment[];
   serviceTypes: WoServiceType[];
   operators: WoOperator[];
+  branches: WoBranch[];
 }
 
-/** Los 5 catálogos activos tal como vienen de Frappe (los usa el form de alta de OT). */
+/** Los catálogos activos tal como vienen de Frappe (los usan los forms de alta/edición de OT). */
 export async function getRawCatalogs(): Promise<RawCatalogs> {
-  const [customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators] = await Promise.all([
+  const [customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators, branches] = await Promise.all([
     getCustomerTypes(),
     getVehicleTypes(),
     getServiceSegments(),
     getServiceTypes(),
     getOperators(),
+    getBranches(),
   ]);
-  return { customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators };
+  return { customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators, branches };
 }
 
 /** Catálogos ya mapeados a {key, label} para filtros y tablas. */
 export function toCatalogOptions(raw: RawCatalogs): DashboardCatalogs {
-  const { operators, serviceSegments: segments, serviceTypes: services, customerTypes, vehicleTypes } = raw;
+  const { operators, serviceSegments: segments, serviceTypes: services, customerTypes, vehicleTypes, branches } = raw;
   const segmentLabel = new Map(segments.map((s) => [s.name, s.segment_name]));
   return {
     operators: operators.map((o) => ({
@@ -493,6 +520,7 @@ export function toCatalogOptions(raw: RawCatalogs): DashboardCatalogs {
     services: services.map((s) => ({ key: s.name, label: s.service_name, parent: s.segment })),
     customerTypes: customerTypes.map((c) => ({ key: c.name, label: c.customer_type_name })),
     vehicleTypes: vehicleTypes.map((v) => ({ key: v.name, label: v.vehicle_type_name })),
+    branches: branches.map((b) => ({ key: b.name, label: b.branch_name, sublabel: b.city })),
   };
 }
 

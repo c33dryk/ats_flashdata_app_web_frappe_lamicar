@@ -152,6 +152,12 @@ relevante ahí, para no tener que releerlo de nuevo:
     (hoja blanca, logo, cliente, vehículo, trabajos sin precios, fotos "después", texto de
     conformidad y firma real). "Imprimir / Guardar PDF" usa el diálogo del navegador; el chrome
     de la app tiene `print:hidden`. En Frappe sería un Print Format.
+22. **Sucursales** (`WO Branch`, aplicado en Frappe): ABM en Configuración (`CATALOG_DEFS`
+    key `branches`), `branch_id` en operarios (tipo de campo `branch-select` del ABM genérico) y
+    en la OT (alta: obligatoria solo si hay sucursales activas; edición: opcional y conserva una
+    sucursal inactiva). Propiedad en el panel, filtro en Operaciones y en Dashboard › Gestión
+    (+ desglose por sucursal). Todo se oculta mientras no haya sucursales cargadas. Estado de los
+    demás cambios de Frappe: `schema/CAMBIOS_FRAPPE.md`.
 19. **Logo Lamicar** (`public/lamicar-logo.png`, recortado del original de lamicar.ar): sidebar,
     topbar en mobile y login; en fondos oscuros va sobre pastilla blanca (el azul no contrasta).
 

@@ -11,6 +11,19 @@ patente…), baja lógica con `is_active` (nunca se borra, porque las OTs refere
 > **Quién lo aplica:** un usuario Administrator / System Manager. La cuenta de servicio que usa la
 > app **no** puede crear DocTypes (recibe 403 al leerlos, es lo esperado).
 
+### Estado (verificado desde la app el 2026-10-18)
+
+| Cambio | Estado |
+|---|---|
+| DocType `WO Branch` + permiso de la cuenta de servicio | ✅ aplicado (ABM en Configuración → Sucursales) |
+| `Work Order.branch_id` | ✅ aplicado (alta/edición de OT, panel, filtros) |
+| `WO Operator.branch_id` | ✅ aplicado (ABM de operarios) |
+| `Work Order.evidence_policy_id` | ⏳ pendiente |
+| `Work Order.client_id`, `Work Order.vehicle_id` | ⏳ pendiente |
+| DocType `WO Vehicle` | ⏳ pendiente |
+| Permiso de la cuenta de servicio sobre `WO Client` (+ lista de campos) | ⏳ pendiente (sigue dando 403) |
+| Confirmar tipo de `WO Evidence.zone` | ⏳ pendiente |
+
 ---
 
 ## 1. DocTypes nuevos

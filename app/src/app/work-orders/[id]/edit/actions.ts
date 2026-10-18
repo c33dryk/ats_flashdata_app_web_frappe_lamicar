@@ -95,6 +95,8 @@ export async function updateWorkOrderAction(
     service_segment_id: str(formData, "service_segment_id"),
     service_type_id: str(formData, "service_type_id"),
     assigned_operator_id: str(formData, "assigned_operator_id"),
+    // Solo si el form mostró el combo (hay sucursales activas); "" = quitar la sucursal.
+    branch_id: formData.has("branch_id") ? (str(formData, "branch_id") ?? "") : undefined,
     description: str(formData, "description"),
     items,
     total_net: totalNet,

@@ -20,6 +20,7 @@ import { nativeSelectClassName } from "@/components/ui/native-select";
 import { updateWorkOrderAction, type EditWorkOrderState } from "@/app/work-orders/[id]/edit/actions";
 import type {
   WoCustomerType,
+  WoBranch,
   WoOperator,
   WoServiceSegment,
   WoServiceType,
@@ -45,6 +46,7 @@ export function EditWorkOrderForm({
   serviceSegments,
   serviceTypes,
   operators,
+  branches = [],
 }: {
   workOrder: WorkOrder;
   customerTypes: WoCustomerType[];
@@ -52,6 +54,7 @@ export function EditWorkOrderForm({
   serviceSegments: WoServiceSegment[];
   serviceTypes: WoServiceType[];
   operators: WoOperator[];
+  branches?: WoBranch[];
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateWorkOrderAction, initialState);
@@ -248,6 +251,28 @@ export function EditWorkOrderForm({
                 ))}
               </select>
             </div>
+            {branches.length > 0 && (
+              <div className="space-y-1">
+                <Label htmlFor="branch_id">Sucursal{false ? " *" : ""}</Label>
+                <select
+                  id="branch_id"
+                  name="branch_id"
+                  defaultValue={workOrder.branch_id ?? ""}
+                  required={false}
+                  className={selectClassName}
+                >
+                  <option value="">{false ? "Elegí una sucursal" : "Sin sucursal"}</option>
+                  {workOrder.branch_id && !branches.some((b) => b.name === workOrder.branch_id) && (
+                    <option value={workOrder.branch_id}>{workOrder.branch_id} (inactiva)</option>
+                  )}
+                  {branches.map((b) => (
+                    <option key={b.name} value={b.name}>
+                      {b.branch_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="col-span-2 space-y-1">
               <Label htmlFor="description">Descripción del trabajo</Label>
               <Textarea id="description" name="description" rows={4} defaultValue={workOrder.description} />

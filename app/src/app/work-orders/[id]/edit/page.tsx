@@ -6,12 +6,9 @@ import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { FrappeApiError } from "@/lib/frappe/client";
 import {
-  getCustomerTypes,
-  getOperators,
-  getServiceSegments,
-  getServiceTypes,
-  getVehicleTypes,
   getWorkOrder,
+  getRawCatalogs,
+  type RawCatalogs,
 } from "@/lib/frappe/work-orders";
 
 const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
@@ -35,25 +32,11 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
     redirect(`/work-orders/${id}`);
   }
 
-  let catalogs: {
-    customerTypes: Awaited<ReturnType<typeof getCustomerTypes>>;
-    vehicleTypes: Awaited<ReturnType<typeof getVehicleTypes>>;
-    serviceSegments: Awaited<ReturnType<typeof getServiceSegments>>;
-    serviceTypes: Awaited<ReturnType<typeof getServiceTypes>>;
-    operators: Awaited<ReturnType<typeof getOperators>>;
-  } | null = null;
+  let catalogs: RawCatalogs | null = null;
   let errorMessage: string | null = null;
 
   try {
-    const [customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators] =
-      await Promise.all([
-        getCustomerTypes(),
-        getVehicleTypes(),
-        getServiceSegments(),
-        getServiceTypes(),
-        getOperators(),
-      ]);
-    catalogs = { customerTypes, vehicleTypes, serviceSegments, serviceTypes, operators };
+    catalogs = await getRawCatalogs();
   } catch (err) {
     errorMessage =
       err instanceof FrappeApiError
@@ -94,6 +77,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
               serviceSegments={catalogs.serviceSegments}
               serviceTypes={catalogs.serviceTypes}
               operators={catalogs.operators}
+              branches={catalogs.branches}
             />
           )
         )}

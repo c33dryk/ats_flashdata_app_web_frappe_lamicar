@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
-import { createWorkOrder, type WorkOrder } from "@/lib/frappe/work-orders";
+import { createWorkOrder, getBranches, type WorkOrder } from "@/lib/frappe/work-orders";
 
 export interface CreateWorkOrderState {
   error: string | null;
@@ -38,11 +38,18 @@ export async function createWorkOrderAction(
     service_segment_id: str(formData, "service_segment_id"),
     service_type_id: str(formData, "service_type_id"),
     assigned_operator_id: str(formData, "assigned_operator_id"),
+    branch_id: str(formData, "branch_id"),
     description: str(formData, "description"),
   };
 
   if (!payload.customer_type_id || !payload.customer_name || !payload.license_plate) {
     return { error: "Tipo de cliente, nombre del cliente y patente son obligatorios." };
+  }
+  // Sucursal obligatoria en OTs nuevas cuando hay sucursales cargadas (en Frappe el campo es
+  // opcional a propósito: las OTs viejas no la tienen y no deben trabarse al editarlas).
+  if (!payload.branch_id) {
+    const branches = await getBranches().catch(() => []);
+    if (branches.length > 0) return { error: "Elegí la sucursal de la orden." };
   }
 
   let created: WorkOrder;

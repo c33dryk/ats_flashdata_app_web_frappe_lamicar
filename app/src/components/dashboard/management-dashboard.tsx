@@ -31,7 +31,7 @@ import { STATUS_GROUPS } from "@/lib/work-order-status";
 import { cn } from "@/lib/utils";
 import type { DashboardWorkOrder, WorkOrderStatus } from "@/lib/frappe/work-orders";
 
-type BreakdownTab = "operator" | "segment" | "customerType" | "status";
+type BreakdownTab = "branch" | "operator" | "segment" | "customerType" | "status";
 
 const GRANULARITY_LABEL: Record<Granularity, string> = { day: "Día", month: "Mes", year: "Año" };
 const PERIOD_LABEL: Record<Granularity, string> = {
@@ -75,6 +75,8 @@ export function ManagementDashboard({
 
   const breakdown = useMemo(() => {
     switch (tab) {
+      case "branch":
+        return buildBreakdown(inRange, (w) => w.branch_id, catalogs.branches);
       case "operator":
         return buildBreakdown(inRange, (w) => w.assigned_operator_id, catalogs.operators);
       case "segment":
@@ -103,6 +105,9 @@ export function ManagementDashboard({
   const hasFilters = Object.values(filters).some(Boolean);
 
   const filterDefs: Array<{ key: keyof DashboardFilters; label: string; all: string; options: CatalogOption[] }> = [
+    ...(catalogs.branches.length
+      ? [{ key: "branch" as const, label: "Sucursal", all: "Todas las sucursales", options: catalogs.branches }]
+      : []),
     { key: "operator", label: "Técnico", all: "Todos los técnicos", options: catalogs.operators },
     { key: "segment", label: "Segmento", all: "Todos los segmentos", options: catalogs.segments },
     {
@@ -163,7 +168,7 @@ export function ManagementDashboard({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
             {filterDefs.map((fd) => (
               <div key={fd.key} className="space-y-1">
                 <Label htmlFor={`dash-${fd.key}`} className="text-xs text-muted-foreground">
@@ -233,6 +238,7 @@ export function ManagementDashboard({
           <div className={segmentedGroupClass} role="group" aria-label="Desglosar por">
             {(
               [
+                ...(catalogs.branches.length ? [["branch", "Sucursal"] as const] : []),
                 ["operator", "Técnico"],
                 ["segment", "Segmento"],
                 ["customerType", "Tipo de cliente"],

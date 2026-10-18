@@ -3,7 +3,7 @@
 // y a qué doctype pegarle) como el componente cliente (para renderizar el form), así quedan
 // sincronizados por definición en vez de por convención.
 
-export type CatalogFieldType = "text" | "number" | "checkbox" | "segment-select";
+export type CatalogFieldType = "text" | "number" | "checkbox" | "segment-select" | "branch-select";
 
 export interface CatalogFieldConfig {
   name: string;
@@ -93,10 +93,28 @@ export const CATALOG_DEFS: CatalogDef[] = [
       { name: "employee_id", label: "Legajo / ID", type: "text", required: true },
       { name: "full_name", label: "Nombre Completo", type: "text", required: true },
       { name: "specialty_segment", label: "Especialidad Principal", type: "segment-select" },
+      { name: "branch_id", label: "Sucursal", type: "branch-select" },
       { name: "phone", label: "Teléfono", type: "text" },
       { name: "is_active", label: "Activo", type: "checkbox" },
     ],
-    listColumns: ["employee_id", "full_name", "specialty_segment"],
+    listColumns: ["employee_id", "full_name", "specialty_segment", "branch_id"],
+  },
+  {
+    key: "branches",
+    doctype: "WO Branch",
+    label: "Sucursales",
+    newLabel: "Nueva Sucursal",
+    idField: "code",
+    fields: [
+      { name: "code", label: "Código", type: "text", required: true },
+      { name: "branch_name", label: "Nombre", type: "text", required: true },
+      { name: "address", label: "Dirección", type: "text" },
+      { name: "city", label: "Localidad", type: "text" },
+      { name: "phone", label: "Teléfono", type: "text" },
+      { name: "email", label: "Email", type: "text" },
+      { name: "is_active", label: "Activo", type: "checkbox" },
+    ],
+    listColumns: ["code", "branch_name", "city", "phone"],
   },
   {
     // Único catálogo con tabla hija (requirements -> WO Evidence Requirement). Se suma acá solo

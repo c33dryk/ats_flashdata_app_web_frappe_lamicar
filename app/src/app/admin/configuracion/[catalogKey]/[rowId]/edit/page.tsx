@@ -6,7 +6,13 @@ import { EvidencePolicyForm } from "@/components/admin/evidence-policy-form";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getDoc } from "@/lib/frappe/resource";
-import { getCustomerTypes, getEvidencePolicy, getServiceSegments, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
+import {
+  getBranches,
+  getCustomerTypes,
+  getEvidencePolicy,
+  getServiceSegments,
+  type WoEvidencePolicy,
+} from "@/lib/frappe/work-orders";
 
 export default async function EditCatalogRowPage({
   params,
@@ -22,6 +28,7 @@ export default async function EditCatalogRowPage({
   let row: Record<string, unknown> | null = null;
   let policy: WoEvidencePolicy | null = null;
   let segmentOptions: Awaited<ReturnType<typeof getServiceSegments>> = [];
+  let branchOptions: Awaited<ReturnType<typeof getBranches>> = [];
   let customerTypes: Awaited<ReturnType<typeof getCustomerTypes>> = [];
   let errorMessage: string | null = null;
 
@@ -31,12 +38,14 @@ export default async function EditCatalogRowPage({
       policy = policyResult;
       customerTypes = types;
     } else {
-      const [rowResult, segments] = await Promise.all([
+      const [rowResult, segments, branches] = await Promise.all([
         getDoc<Record<string, unknown>>(def.doctype, rowId),
         getServiceSegments(),
+        getBranches(),
       ]);
       row = rowResult;
       segmentOptions = segments;
+      branchOptions = branches;
     }
   } catch (err) {
     if (err instanceof FrappeApiError && err.status === 404) notFound();
@@ -70,7 +79,7 @@ export default async function EditCatalogRowPage({
         ) : isEvidencePolicies ? (
           policy && <EvidencePolicyForm policy={policy} customerTypes={customerTypes} />
         ) : (
-          row && <CatalogRowForm def={def} segmentOptions={segmentOptions} row={row} />
+          row && <CatalogRowForm def={def} segmentOptions={segmentOptions} branchOptions={branchOptions} row={row} />
         )}
       </div>
     </div>

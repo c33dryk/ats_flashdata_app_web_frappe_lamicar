@@ -22,6 +22,7 @@ export interface DashboardCatalogs {
   services: CatalogOption[];
   customerTypes: CatalogOption[];
   vehicleTypes: CatalogOption[];
+  branches: CatalogOption[];
 }
 
 /** Etiqueta de `key` en una lista de opciones, o undefined si no está (ej. registro inactivo). */
@@ -66,6 +67,7 @@ export type Granularity = "day" | "month" | "year";
 
 /** "" = sin filtro en esa dimensión. */
 export interface DashboardFilters {
+  branch: string;
   operator: string;
   segment: string;
   service: string;
@@ -75,6 +77,7 @@ export interface DashboardFilters {
 }
 
 export const EMPTY_FILTERS: DashboardFilters = {
+  branch: "",
   operator: "",
   segment: "",
   service: "",
@@ -88,6 +91,7 @@ export function applyFilters(rows: DashboardWorkOrder[], f: DashboardFilters) {
   return rows.filter(
     (w) =>
       w.status !== "Anulada" &&
+      (!f.branch || w.branch_id === f.branch) &&
       (!f.operator || w.assigned_operator_id === f.operator) &&
       (!f.segment || w.service_segment_id === f.segment) &&
       (!f.service || w.service_type_id === f.service) &&
