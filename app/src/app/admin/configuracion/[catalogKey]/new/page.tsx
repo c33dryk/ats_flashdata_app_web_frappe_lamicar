@@ -2,9 +2,10 @@ import { notFound } from "next/navigation";
 import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { CatalogRowForm } from "@/components/admin/catalog-row-form";
+import { EvidencePolicyForm } from "@/components/admin/evidence-policy-form";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { FrappeApiError } from "@/lib/frappe/client";
-import { getServiceSegments } from "@/lib/frappe/work-orders";
+import { getCustomerTypes, getServiceSegments } from "@/lib/frappe/work-orders";
 
 export default async function NewCatalogRowPage({
   params,
@@ -15,10 +16,17 @@ export default async function NewCatalogRowPage({
   const def = CATALOG_DEFS.find((d) => d.key === catalogKey);
   if (!def) notFound();
 
+  const isEvidencePolicies = catalogKey === "evidence-policies";
+
   let segmentOptions: Awaited<ReturnType<typeof getServiceSegments>> = [];
+  let customerTypes: Awaited<ReturnType<typeof getCustomerTypes>> = [];
   let errorMessage: string | null = null;
   try {
-    segmentOptions = await getServiceSegments();
+    if (isEvidencePolicies) {
+      customerTypes = await getCustomerTypes();
+    } else {
+      segmentOptions = await getServiceSegments();
+    }
   } catch (err) {
     errorMessage =
       err instanceof FrappeApiError
@@ -47,6 +55,8 @@ export default async function NewCatalogRowPage({
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {errorMessage}
           </p>
+        ) : isEvidencePolicies ? (
+          <EvidencePolicyForm customerTypes={customerTypes} />
         ) : (
           <CatalogRowForm def={def} segmentOptions={segmentOptions} />
         )}

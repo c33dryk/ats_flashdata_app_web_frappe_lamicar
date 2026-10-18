@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getWorkOrder, updateWorkOrder, type WorkOrder, type WorkOrderItem } from "@/lib/frappe/work-orders";
@@ -11,7 +12,6 @@ export interface EditWorkOrderState {
   success: boolean;
 }
 
-const EDIT_ROLES = ["admin", "recepcion", "tecnico"] as const;
 const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
 
 function parseItems(raw: string | undefined): WorkOrderItem[] | null {
@@ -51,7 +51,7 @@ export async function updateWorkOrderAction(
   formData: FormData
 ): Promise<EditWorkOrderState> {
   const session = await getSession();
-  if (!session || !EDIT_ROLES.includes(session.role as (typeof EDIT_ROLES)[number])) {
+  if (!session || !can(session.role, "editOrder")) {
     return { error: "No tenés permiso para editar órdenes de trabajo.", success: false };
   }
 

@@ -29,6 +29,7 @@ export default async function CatalogListPage({
     rows = await getList<Record<string, unknown>>(def.doctype, {
       fields: def.fields.map((f) => f.name),
       orderBy: `${def.idField} asc`,
+      limit: 0, // sin limit, Frappe corta en 20 filas
     });
   } catch (err) {
     errorMessage =

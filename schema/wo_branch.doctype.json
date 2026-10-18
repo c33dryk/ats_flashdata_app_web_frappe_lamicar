@@ -1,0 +1,30 @@
+{
+  "name": "WO Branch",
+  "module": "Lamicar Services",
+  "custom": 1,
+  "autoname": "field:code",
+  "naming_rule": "By fieldname",
+  "title_field": "branch_name",
+  "show_title_field_in_link": 1,
+  "search_fields": "branch_name,city",
+  "sort_field": "branch_name",
+  "sort_order": "ASC",
+  "track_changes": 1,
+  "fields": [
+    { "fieldname": "code", "label": "Código", "fieldtype": "Data", "reqd": 1, "unique": 1, "in_list_view": 1 },
+    { "fieldname": "branch_name", "label": "Nombre", "fieldtype": "Data", "reqd": 1, "in_list_view": 1 },
+    { "fieldname": "address", "label": "Dirección", "fieldtype": "Small Text" },
+    { "fieldname": "city", "label": "Localidad", "fieldtype": "Data", "in_list_view": 1 },
+    { "fieldname": "phone", "label": "Teléfono", "fieldtype": "Data", "options": "Phone" },
+    { "fieldname": "email", "label": "Email", "fieldtype": "Data", "options": "Email" },
+    { "fieldname": "is_active", "label": "Activo", "fieldtype": "Check", "default": "1", "in_list_view": 1 }
+  ],
+  "permissions": [
+    { "role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1 },
+    { "role": "WO Admin", "read": 1, "write": 1, "create": 1, "delete": 0 },
+    { "role": "WO Recepcion", "read": 1 },
+    { "role": "WO Tecnico", "read": 1 },
+    { "role": "WO Facturador", "read": 1 },
+    { "role": "WO Auditor", "read": 1 }
+  ]
+}

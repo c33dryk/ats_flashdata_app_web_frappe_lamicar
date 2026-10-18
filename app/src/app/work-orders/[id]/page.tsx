@@ -14,8 +14,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
+import { EvidenceSection } from "@/components/work-orders/evidence-section";
 import { getSession } from "@/lib/auth";
-import { getWorkOrder } from "@/lib/frappe/work-orders";
+import { can } from "@/lib/permissions";
+import { getEvidencePolicyForCustomerType, getWorkOrder, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
 import { FrappeApiError } from "@/lib/frappe/client";
 
 const moneyFmt = new Intl.NumberFormat("es-AR", {
@@ -36,7 +38,6 @@ function fmtDateTime(value?: string) {
   return Number.isNaN(d.getTime()) ? value : d.toLocaleString("es-AR");
 }
 
-const EDIT_ROLES = ["admin", "recepcion", "tecnico"] as const;
 const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -50,17 +51,22 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default async function WorkOrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ accion?: string }>;
 }) {
   const { id } = await params;
+  const { accion } = await searchParams;
   const session = await getSession();
 
   let wo: Awaited<ReturnType<typeof getWorkOrder>> | null = null;
+  let evidencePolicy: WoEvidencePolicy | null = null;
   let errorMessage: string | null = null;
 
   try {
     wo = await getWorkOrder(id);
+    evidencePolicy = await getEvidencePolicyForCustomerType(wo.customer_type_id);
   } catch (err) {
     if (err instanceof FrappeApiError && err.status === 404) {
       notFound();
@@ -95,7 +101,7 @@ export default async function WorkOrderDetailPage({
                 <Badge variant="secondary">{wo.status}</Badge>
               </div>
               {session &&
-                EDIT_ROLES.includes(session.role as (typeof EDIT_ROLES)[number]) &&
+                can(session.role, "editOrder") &&
                 !LOCKED_STATUSES.includes(wo.status as (typeof LOCKED_STATUSES)[number]) && (
                   <Link
                     href={`/work-orders/${wo.name}/edit`}
@@ -106,7 +112,9 @@ export default async function WorkOrderDetailPage({
                 )}
             </div>
 
-            {session && <WorkOrderActions workOrder={wo} role={session.role} />}
+            {session && (
+              <WorkOrderActions workOrder={wo} role={session.role} initialPanel={accion} />
+            )}
 
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
@@ -205,38 +213,9 @@ export default async function WorkOrderDetailPage({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Evidencia fotográfica ({wo.evidence?.length ?? 0})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {wo.evidence && wo.evidence.length > 0 ? (
-                  <ul className="space-y-2">
-                    {wo.evidence.map((ev, i) => (
-                      <li
-                        key={ev.name ?? i}
-                        className="flex flex-wrap items-center gap-2 text-sm"
-                      >
-                        <Badge variant="outline">{ev.type}</Badge>
-                        {ev.zone && <span className="text-muted-foreground">{ev.zone}</span>}
-                        <Link
-                          href={ev.url}
-                          target="_blank"
-                          className="text-primary hover:underline"
-                        >
-                          {ev.filename || ev.url}
-                        </Link>
-                        {ev.notes && (
-                          <span className="text-muted-foreground">— {ev.notes}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Sin evidencia cargada.</p>
-                )}
-              </CardContent>
-            </Card>
+            {session && (
+              <EvidenceSection workOrder={wo} role={session.role} policy={evidencePolicy} />
+            )}
 
             <Card>
               <CardHeader>

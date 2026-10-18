@@ -1,13 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { createWorkOrder, type WorkOrder } from "@/lib/frappe/work-orders";
 
 export interface CreateWorkOrderState {
   error: string | null;
+  /** Nº de la OT creada, cuando el form pidió quedarse en la pantalla (stay=1). */
+  createdName?: string;
 }
 
 export async function createWorkOrderAction(
@@ -15,7 +19,7 @@ export async function createWorkOrderAction(
   formData: FormData
 ): Promise<CreateWorkOrderState> {
   const session = await getSession();
-  if (!session || (session.role !== "admin" && session.role !== "recepcion")) {
+  if (!session || !can(session.role, "createOrder")) {
     return { error: "No tenés permiso para crear órdenes de trabajo." };
   }
 
@@ -51,6 +55,14 @@ export async function createWorkOrderAction(
           `No se pudo crear la orden (${err.status}).`)
         : "No se pudo crear la orden de trabajo.";
     return { error: message };
+  }
+
+  // Desde el modal de /operaciones (stay=1): no navegar, devolver la OT creada y refrescar listas.
+  if (formData.get("stay") === "1") {
+    revalidatePath("/operaciones");
+    revalidatePath("/dashboard");
+    revalidatePath("/work-orders");
+    return { error: null, createdName: created.name };
   }
 
   redirect(`/work-orders/${created.name}`);

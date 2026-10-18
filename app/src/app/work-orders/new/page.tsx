@@ -3,6 +3,7 @@ import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { NewWorkOrderForm } from "@/components/work-orders/new-work-order-form";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { FrappeApiError } from "@/lib/frappe/client";
 import {
   getCustomerTypes,
@@ -14,7 +15,7 @@ import {
 
 export default async function NewWorkOrderPage() {
   const session = await getSession();
-  if (!session || (session.role !== "admin" && session.role !== "recepcion")) {
+  if (!session || !can(session.role, "createOrder")) {
     redirect("/work-orders");
   }
 

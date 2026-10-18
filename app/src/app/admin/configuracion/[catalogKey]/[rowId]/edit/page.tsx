@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { CatalogRowForm } from "@/components/admin/catalog-row-form";
+import { EvidencePolicyForm } from "@/components/admin/evidence-policy-form";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getDoc } from "@/lib/frappe/resource";
-import { getServiceSegments } from "@/lib/frappe/work-orders";
+import { getCustomerTypes, getEvidencePolicy, getServiceSegments, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
 
 export default async function EditCatalogRowPage({
   params,
@@ -16,17 +17,27 @@ export default async function EditCatalogRowPage({
   const def = CATALOG_DEFS.find((d) => d.key === catalogKey);
   if (!def) notFound();
 
+  const isEvidencePolicies = catalogKey === "evidence-policies";
+
   let row: Record<string, unknown> | null = null;
+  let policy: WoEvidencePolicy | null = null;
   let segmentOptions: Awaited<ReturnType<typeof getServiceSegments>> = [];
+  let customerTypes: Awaited<ReturnType<typeof getCustomerTypes>> = [];
   let errorMessage: string | null = null;
 
   try {
-    const [rowResult, segments] = await Promise.all([
-      getDoc<Record<string, unknown>>(def.doctype, rowId),
-      getServiceSegments(),
-    ]);
-    row = rowResult;
-    segmentOptions = segments;
+    if (isEvidencePolicies) {
+      const [policyResult, types] = await Promise.all([getEvidencePolicy(rowId), getCustomerTypes()]);
+      policy = policyResult;
+      customerTypes = types;
+    } else {
+      const [rowResult, segments] = await Promise.all([
+        getDoc<Record<string, unknown>>(def.doctype, rowId),
+        getServiceSegments(),
+      ]);
+      row = rowResult;
+      segmentOptions = segments;
+    }
   } catch (err) {
     if (err instanceof FrappeApiError && err.status === 404) notFound();
     errorMessage =
@@ -56,6 +67,8 @@ export default async function EditCatalogRowPage({
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {errorMessage}
           </p>
+        ) : isEvidencePolicies ? (
+          policy && <EvidencePolicyForm policy={policy} customerTypes={customerTypes} />
         ) : (
           row && <CatalogRowForm def={def} segmentOptions={segmentOptions} row={row} />
         )}

@@ -28,7 +28,8 @@ export async function getList<T = Record<string, unknown>>(
   const params = new URLSearchParams();
   if (options.fields) params.set("fields", JSON.stringify(options.fields));
   if (options.filters) params.set("filters", JSON.stringify(options.filters));
-  if (options.limit) params.set("limit_page_length", String(options.limit));
+  // Sin limit, Frappe devuelve solo 20 filas. limit: 0 = sin tope (todas).
+  if (options.limit !== undefined) params.set("limit_page_length", String(options.limit));
   if (options.orderBy) params.set("order_by", options.orderBy);
 
   const query = params.toString();

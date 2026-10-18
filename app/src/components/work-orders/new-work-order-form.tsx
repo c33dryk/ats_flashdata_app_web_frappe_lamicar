@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { nativeSelectClassName } from "@/components/ui/native-select";
 import { createWorkOrderAction, type CreateWorkOrderState } from "@/app/work-orders/actions";
 import type {
   WoCustomerType,
@@ -17,9 +17,7 @@ import type {
   WoVehicleType,
 } from "@/lib/frappe/work-orders";
 
-const selectClassName = cn(
-  "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
-);
+const selectClassName = nativeSelectClassName;
 
 const initialState: CreateWorkOrderState = { error: null };
 
@@ -29,15 +27,28 @@ export function NewWorkOrderForm({
   serviceSegments,
   serviceTypes,
   operators,
+  onCreated,
+  onCancel,
 }: {
   customerTypes: WoCustomerType[];
   vehicleTypes: WoVehicleType[];
   serviceSegments: WoServiceSegment[];
   serviceTypes: WoServiceType[];
   operators: WoOperator[];
+  /** Si se pasa, el form se queda en la pantalla (modal) y avisa la OT creada en vez de navegar. */
+  onCreated?: (name: string) => void;
+  /** Si se pasa, "Cancelar" llama esto (cerrar modal) en vez de volver a /work-orders. */
+  onCancel?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(createWorkOrderAction, initialState);
   const [segment, setSegment] = useState<string>("");
+
+  // Avisar una sola vez por cada OT creada (state cambia de identidad en cada submit). El modal
+  // desmonta el form al cerrarse, así que no hace falta limpiar los campos acá.
+  useEffect(() => {
+    if (state.createdName && onCreated) onCreated(state.createdName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   const filteredServiceTypes = useMemo(
     () => (segment ? serviceTypes.filter((s) => s.segment === segment) : serviceTypes),
@@ -46,6 +57,7 @@ export function NewWorkOrderForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      {onCreated && <input type="hidden" name="stay" value="1" />}
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {state.error}
@@ -201,9 +213,15 @@ export function NewWorkOrderForm({
         <Button type="submit" disabled={pending}>
           {pending ? "Creando..." : "Crear Orden"}
         </Button>
-        <Link href="/work-orders" className={buttonVariants({ variant: "outline" })}>
-          Cancelar
-        </Link>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+            Cancelar
+          </Button>
+        ) : (
+          <Link href="/work-orders" className={buttonVariants({ variant: "outline" })}>
+            Cancelar
+          </Link>
+        )}
       </div>
     </form>
   );

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { SearchableTable } from "@/components/searchable-table";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { getWorkOrders } from "@/lib/frappe/work-orders";
 import { FrappeApiError } from "@/lib/frappe/client";
 
@@ -30,7 +31,7 @@ function fmtDate(value?: string) {
 
 export default async function WorkOrdersPage() {
   const session = await getSession();
-  const canCreate = session?.role === "admin" || session?.role === "recepcion";
+  const canCreate = can(session?.role, "createOrder");
 
   let workOrders: Awaited<ReturnType<typeof getWorkOrders>> = [];
   let errorMessage: string | null = null;

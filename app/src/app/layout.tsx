@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "App",
+  title: "Lamicar · Órdenes de trabajo",
   description: "Boilerplate Next.js + Frappe",
 };
 

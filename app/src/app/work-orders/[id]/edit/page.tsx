@@ -3,6 +3,7 @@ import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { EditWorkOrderForm } from "@/components/work-orders/edit-work-order-form";
 import { getSession } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { FrappeApiError } from "@/lib/frappe/client";
 import {
   getCustomerTypes,
@@ -13,13 +14,12 @@ import {
   getWorkOrder,
 } from "@/lib/frappe/work-orders";
 
-const EDIT_ROLES = ["admin", "recepcion", "tecnico"] as const;
 const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
 
 export default async function EditWorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
-  if (!session || !EDIT_ROLES.includes(session.role as (typeof EDIT_ROLES)[number])) {
+  if (!session || !can(session.role, "editOrder")) {
     redirect(`/work-orders/${id}`);
   }
 

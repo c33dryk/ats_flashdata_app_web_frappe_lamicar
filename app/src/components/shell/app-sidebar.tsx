@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -13,11 +14,12 @@ import {
   ChevronRight,
   ChevronsUpDown,
   Settings,
-  Boxes,
+  SquareKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type SessionPayload } from "@/lib/auth-shared";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
+import { canAccessPath } from "@/lib/permissions";
 import { useSidebar } from "./sidebar-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -30,7 +32,7 @@ import {
 
 // Nombre visible de la app en el sidebar. Reemplazar por proyecto (o levantarlo de una env var
 // NEXT_PUBLIC_APP_NAME si distintos deploys del mismo template necesitan nombres distintos).
-const APP_NAME = "App";
+const APP_NAME = "Lamicar";
 
 function initialsOf(name: string): string {
   return name
@@ -41,15 +43,17 @@ function initialsOf(name: string): string {
     .join("");
 }
 
-// Placeholder mínimo — cada proyecto de cliente reemplaza/extiende esta lista con sus propias
-// secciones (igual patrón: href, label, icon).
+// Cada rol ve solo las pantallas que habilita SCREEN_ACCESS (lib/permissions.ts) — el filtro se
+// aplica más abajo con canAccessPath, el mismo chequeo que hace proxy.ts.
 const navPrincipal = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/operaciones", label: "Operaciones", icon: SquareKanban },
+  // Versión anterior del listado — se mantiene hasta validar /operaciones.
   { href: "/work-orders", label: "Órdenes de Trabajo", icon: ClipboardList },
 ];
 
-// Links solo-admin del proyecto (gateado por session.role === "admin" más abajo, y por
-// proxy.ts para /admin/*). Cada grupo se expande como acordeón mostrando sus `children` — los
+// Links solo-admin del proyecto (gateado por canAccessPath más abajo, y por proxy.ts para
+// /admin/*). Cada grupo se expande como acordeón mostrando sus `children` — los
 // de "Configuración" salen de CATALOG_DEFS para no duplicar esa lista a mano.
 const navAdmin: Array<{
   basePath: string;
@@ -155,8 +159,10 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-3">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2 overflow-hidden">
-              <Boxes className="h-6 w-6 shrink-0 text-brand" />
-              <span className="truncate text-sm font-semibold tracking-tight">{APP_NAME}</span>
+              {/* Logo con fondo transparente pensado para fondo claro: en oscuro va sobre blanco */}
+              <span className="inline-flex shrink-0 dark:rounded-md dark:bg-white dark:px-1.5 dark:py-1">
+                <Image src="/lamicar-logo.png" alt={APP_NAME} width={109} height={28} priority className="h-7 w-auto" />
+              </span>
             </Link>
           )}
           <button
@@ -178,17 +184,19 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
 
         <nav className="flex flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden px-2.5 py-4">
           <div className="flex flex-col gap-1">
-            {navPrincipal.map((item) => (
-              <NavLink
-                key={item.href}
-                {...item}
-                active={pathname === item.href}
-                collapsed={collapsed}
-              />
-            ))}
+            {navPrincipal
+              .filter((item) => session && canAccessPath(session.role, item.href))
+              .map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                  collapsed={collapsed}
+                />
+              ))}
           </div>
 
-          {session?.role === "admin" && navAdmin.length > 0 && (
+          {session && navAdmin.some((g) => canAccessPath(session.role, g.basePath)) && (
             <div className="flex flex-col gap-1">
               {!collapsed && (
                 <p className="flex items-center gap-1.5 px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">

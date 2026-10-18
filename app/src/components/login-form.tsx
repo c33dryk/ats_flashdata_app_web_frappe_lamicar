@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const inputClass =
-  "w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors focus-visible:border-violet-400 focus-visible:ring-2 focus-visible:ring-violet-500/30";
+  "w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none transition-colors focus-visible:border-violet-400 focus-visible:ring-2 focus-visible:ring-violet-500/30 login-input";
 
 export function LoginForm() {
   const router = useRouter();
@@ -68,8 +68,10 @@ export function LoginForm() {
         <button
           type="button"
           onClick={() => setShowPassword((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
-          tabIndex={-1}
+          aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+          aria-pressed={showPassword}
+          title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-violet-300 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-violet-500/50"
         >
           {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>

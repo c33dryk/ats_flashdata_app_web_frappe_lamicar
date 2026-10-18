@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,15 +26,36 @@ const COMMAND_LABELS: Record<WorkOrderCommand, string> = {
 
 const initialState: TransitionState = { error: null };
 
-export function WorkOrderActions({ workOrder, role }: { workOrder: WorkOrder; role: AppRole }) {
+export function WorkOrderActions({
+  workOrder,
+  role,
+  initialPanel,
+  onSuccess,
+}: {
+  workOrder: WorkOrder;
+  role: AppRole;
+  /** Panel a abrir de entrada (?accion=deliver desde el kanban), si el comando está disponible. */
+  initialPanel?: string;
+  /** Se llama cuando una transición terminó bien (el panel lateral recarga la OT). */
+  onSuccess?: () => void;
+}) {
   const [state, dispatch, pending] = useActionState(transitionWorkOrderAction, initialState);
-  const [activePanel, setActivePanel] = useState<WorkOrderCommand | null>(null);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (wasPending.current && !pending && !state.error) onSuccess?.();
+    wasPending.current = pending;
+  }, [pending, state, onSuccess]);
 
   const availableCommands = (
     Object.entries(ALLOWED_TRANSITIONS[workOrder.status] ?? {}) as [WorkOrderCommand, string][]
   )
     .map(([cmd]) => cmd)
     .filter((cmd) => COMMAND_ROLES[cmd].includes(role));
+
+  const [activePanel, setActivePanel] = useState<WorkOrderCommand | null>(() =>
+    availableCommands.find((c) => c === initialPanel && c !== "start" && c !== "finish") ?? null
+  );
 
   function baseFormData(command: WorkOrderCommand) {
     const fd = new FormData();

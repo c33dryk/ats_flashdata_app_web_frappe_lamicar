@@ -60,14 +60,16 @@ interface FrappeUploadResult {
 // `Content-Type: application/json`; acá el boundary lo tiene que poner `fetch` solo.
 export async function frappeUploadFile(params: {
   filename: string;
-  contentBase64: string;
+  /** Contenido en base64 (ej. firma de un <canvas>) o, si ya se tiene, los bytes directos. */
+  contentBase64?: string;
+  content?: Buffer;
   isPrivate?: boolean;
   doctype?: string;
   docname?: string;
 }): Promise<FrappeUploadResult> {
   const form = new FormData();
-  const buffer = Buffer.from(params.contentBase64, "base64");
-  form.append("file", new Blob([buffer]), params.filename);
+  const buffer = params.content ?? Buffer.from(params.contentBase64 ?? "", "base64");
+  form.append("file", new Blob([new Uint8Array(buffer)]), params.filename);
   form.append("is_private", params.isPrivate === false ? "0" : "1");
   if (params.doctype) form.append("doctype", params.doctype);
   if (params.docname) form.append("docname", params.docname);
@@ -86,4 +88,25 @@ export async function frappeUploadFile(params: {
   const json = (await res.json()) as { message?: FrappeUploadResult };
   if (!json.message) throw new Error("Respuesta inesperada de upload_file");
   return json.message;
+}
+
+// `file_url` que devuelve upload_file es relativo al sitio de Frappe (ej. "/private/files/x.png"),
+// no a esta app — y los archivos "private" de Frappe se sirven detrás de un chequeo de sesión que
+// no entiende el header "Authorization: token key:secret" cuando el request lo dispara el
+// navegador directo (un <a href> no puede mandar ese header). Por eso el browser nunca pega
+// directo contra Frappe para ver un archivo: pasa por /api/files, que hace este fetch server-side
+// con el service account y le devuelve los bytes a la app.
+export async function frappeFetchFile(path: string): Promise<{ buffer: Buffer; contentType: string }> {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    headers: { Authorization: authHeader() },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new FrappeApiError(`Frappe API error ${res.status} en ${path}`, res.status);
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") ?? "application/octet-stream";
+  return { buffer, contentType };
 }

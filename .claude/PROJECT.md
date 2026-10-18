@@ -63,14 +63,23 @@ relevante ahí, para no tener que releerlo de nuevo:
 7. **Editar OT** (`/work-orders/[id]/edit`) — cabecera + ítems (`Work Order Item`, tabla hija).
    `total_net`/`amount_net` se recalculan **en la app** (no hay controller Python en Frappe que lo
    haga). Bloqueado en `Facturada`/`Anulada`. Mismo patrón de concurrencia que las transiciones.
-8. **Catálogos (ABM)** — 5 de los 6 catálogos simples (todo menos `WO Evidence Policy`, que tiene
-   tabla hija de requisitos y quedó pendiente). `/admin/configuracion/[catalogKey]` (+`/new`,
-   `+/[rowId]/edit`), dirigido por config (`lib/frappe/catalogs.ts` → `CATALOG_DEFS`) para no
-   repetir componente+action 5 veces. Sidebar: acordeón bajo "Configuración".
+8. **Catálogos (ABM)** — los 6, incluido `WO Evidence Policy` (con tabla hija `requirements` →
+   `WO Evidence Requirement`). `/admin/configuracion/[catalogKey]` (+`/new`, `+/[rowId]/edit`),
+   dirigido por config (`lib/frappe/catalogs.ts` → `CATALOG_DEFS`) para no repetir componente+
+   action 6 veces. Sidebar: acordeón bajo "Configuración".
    - "Eliminar" = desactivar (`is_active=0`), nunca borrado real (Work Order los referencia por
      Link). Sin `window.confirm`: desactiva al toque + toast con "Deshacer".
    - Filas inactivas ocultas por default; la tarjeta KPI "Inactivos" es clickeable y muestra
      *solo* las inactivas (con botón "Reactivar" por fila y "← Volver").
+   - `evidence-policies` está en `CATALOG_DEFS` solo para reusar listado/sidebar/activar-
+     desactivar tal cual (son campos planos) — el alta/edición es bespoke
+     (`components/admin/evidence-policy-form.tsx` + `saveEvidencePolicyAction` en
+     `admin/configuracion/actions.ts`), porque el pipeline genérico (`CatalogRowForm`/
+     `saveCatalogRowAction`) no sabe manejar la tabla hija. Mismo patrón de tabla hija editable
+     que `Work Order Item` en la edición de OT (estado local + `requirements_json` serializado a
+     JSON en un campo oculto justo antes de submit) y misma concurrencia optimista (compara
+     `modified`). Fieldnames verificados en vivo contra Frappe (`code`/`label`/`stage`
+     `before|during|after|delivery`/`min_photos`/`allow_exception`).
 9. **Tabla + buscador reutilizables**: `components/ui/table.tsx` (estilo global: borde, header
    uppercase gris) y `components/searchable-table.tsx` (buscador client-side vía atributo
    `data-search` en cada `<TableRow>` — necesario porque los listados son Server Components y no
@@ -79,6 +88,59 @@ relevante ahí, para no tener que releerlo de nuevo:
     `<Toaster />`), sobre `@base-ui/react/toast` (ya venía instalado con `@base-ui/react`, no se
     agregó dependencia nueva). Mismo import path/API que el registry de shadcn (`toast.add({...})`
     style "base"). Provider en `layout.tsx`.
+11. **Evidencia fotográfica general** (`components/work-orders/evidence-section.tsx`, actions
+    `addEvidenceAction`/`removeEvidenceAction` en `work-orders/[id]/actions.ts`): la tabla hija
+    `Work Order.evidence` (`WoEvidence`) y `frappeUploadFile` ya existían (los usaba la firma de
+    entrega) — lo que faltaba era la UI de carga. Mismo patrón que la firma (`<input type=file>` →
+    `FileReader` a base64 → `frappeUploadFile` → push a `evidence[]`), pero como acción aparte de
+    `transitionWorkOrderAction` porque subir una foto no cambia el `status` de la OT. Muestra un
+    checklist de la `WO Evidence Policy` aplicable (resuelta por `customer_type_id`, no hay link
+    directo `Work Order` → política) **solo informativo** — no bloquea transiciones; eso quedó
+    para una iteración futura si hace falta con datos reales de uso. `capture="environment"` en
+    el input dispara la cámara nativa en mobile sin JS extra.
+12. **Proxy de archivos privados** (`app/api/files/route.ts` + `frappeFetchFile` en
+    `lib/frappe/client.ts`): al probar la evidencia fotográfica se vio que los links a
+    `ev.url`/`delivery_signature_url` no abrían — ver gotcha correspondiente más abajo. Cualquier
+    link a un archivo subido con `frappeUploadFile({ isPrivate: true, ... })` tiene que pasar por
+    `/api/files?path=<file_url>` en vez de usar `ev.url`/`file_url` directo.
+13. **Permisos centralizados** (`lib/permissions.ts`): `can(role, capability)` (createOrder,
+    editOrder, uploadEvidence, manageCatalogs) y `SCREEN_ACCESS`/`canAccessPath` (qué pantallas ve
+    cada rol). Lo usan sidebar (filtra el menú), `proxy.ts` (bloquea rutas), páginas y Server
+    Actions — reemplazó ~10 listas de roles copiadas. Desvío del MVP: `facturador` sigue viendo
+    OTs porque facturar vive en el detalle; sacárselo cuando exista `/facturacion`. Pantallas del
+    MVP pendientes (con su acceso original): Remitos (todos), Clientes y Flota (todos),
+    Facturación (admin, facturador, recepcion, auditor).
+14. **Dashboard** (`/dashboard`, `?vista=gestion`): Operativo (KPIs que linkean a
+    `/operaciones?filtro=...`, flujo por estado, segmentos, OTs activas) y Gestión (filtros por
+    técnico/segmento/servicio/tipo cliente/vehículo/estado, gráfico de columnas día/mes/año por
+    `creation`, desglose con fila "Sin asignar"). Lógica pura en `lib/dashboard-metrics.ts` →
+    al migrar a Frappe es un Report/whitelisted method con GROUP BY. Diferencias con el MVP: los
+    períodos se calculan desde hoy (el MVP tenía fechas hardcodeadas) y las Anuladas no suman.
+15. **Operaciones** (`/operaciones`) — versión nueva del listado, **convive con `/work-orders`**
+    (se dejó intacto a pedido del usuario hasta validar la nueva). Indicadores clickeables que
+    filtran (`OPERATIONS_FILTERS` en `lib/work-order-status.ts`, `?filtro=`), lista por defecto,
+    toggle a Kanban (`?vista=kanban`), Nueva Orden en modal (al crear se queda en la pantalla,
+    toast con "Abrir"). Detalle/edición siguen en `/work-orders/[id]`.
+16. **Kanban con drag & drop** (`components/operations/kanban-board.tsx`, `@dnd-kit/core`):
+    soltar solo es válido si hay comando en `ALLOWED_TRANSITIONS` + `COMMAND_ROLES` (columnas
+    inválidas se atenúan). start/finish se aplican directo (optimista con `useOptimistic`);
+    mark_pending abre modal de motivo; deliver navega a `/work-orders/[id]?accion=deliver`
+    (abre el panel de firma). Facturada/Anulada no son columnas. Mouse/touch toman la tarjeta
+    entera (touch: mantener 200ms); teclado usa el ícono de arrastre.
+17. **Panel lateral de OT** (`components/operations/work-order-panel.tsx`, estilo ClickUp): se
+    abre desde lista/kanban/dashboard con `/operaciones?ot=<OT>` (pushState; "atrás" cierra). Lee
+    `GET /api/work-orders/:id` (OT + políticas). Propiedades con ícono, stepper de estado,
+    pestañas Fotos y archivos / Trabajos / Actividad, acciones fijas abajo (`WorkOrderActions`
+    con `onSuccess` para recargar). En celular ocupa la pantalla. `/work-orders/[id]` sigue
+    existiendo como "página completa".
+18. **Fotos y archivos** (`components/work-orders/evidence-checklist.tsx`): checklist por etapa
+    desde la WO Evidence Policy, miniaturas + visor, "Sacar foto" (`capture=environment`) y
+    "Subir archivo" (imágenes/PDF, múltiple). Compresión en el navegador (`lib/image-compress.ts`,
+    1920px JPEG 0.82) y subida en cola a `POST /api/work-orders/:id/evidence` (route handler, no
+    Server Action). El requisito se guarda en `zone` (con fallback a prefijo `[CODE]` en `notes`
+    si Frappe lo rechaza) — reglas en `lib/evidence.ts`.
+19. **Logo Lamicar** (`public/lamicar-logo.png`, recortado del original de lamicar.ar): sidebar,
+    topbar en mobile y login; en fondos oscuros va sobre pastilla blanca (el azul no contrasta).
 
 ## Decisiones de arquitectura (por qué, no solo qué)
 
@@ -86,6 +148,9 @@ relevante ahí, para no tener que releerlo de nuevo:
   ABM) usan `"use server"` + `useActionState`, no rutas `/api/*` propias — es el patrón nativo de
   Next 16/React 19 para forms, evita boilerplate. Las únicas excepciones son las ya provistas por
   el template (`/api/auth/*`) y `frappeUploadFile` (multipart, no puede ir por `useActionState`).
+- **Modales = `<dialog>` nativo** (`components/ui/modal.tsx`), no el Dialog de shadcn/base-ui:
+  foco atrapado, Esc y fondo inerte los da el navegador, sin dependencia nueva. `<select>`
+  nativo con estilo compartido en `components/ui/native-select.ts` (`nativeSelectClassName`).
 - **Sin componente `Dialog`/`Tabs`/`Select` de shadcn instalados**: en vez de instalarlos, todo lo
   que sería un modal es un panel `Card` inline (paneles de transición en `work-order-actions.tsx`,
   antes también en el ABM), y los combos son `<select>` nativo estilado a mano
@@ -98,14 +163,28 @@ relevante ahí, para no tener que releerlo de nuevo:
   antes de guardar) contra el `modified` que el cliente tenía cuando abrió la página. Se eligió
   esto en vez de confiar en que el PUT de Frappe rechace un `modified` desactualizado, porque ese
   comportamiento no estaba verificado para el REST genérico.
-- **Catálogos: nunca borrado real, siempre `is_active`**: los 5 (y el que falta) están
-  referenciados por `Link` desde `Work Order` — borrar de verdad podría romper OTs existentes.
+- **Catálogos: nunca borrado real, siempre `is_active`**: los 6 están referenciados por `Link`
+  desde `Work Order` — borrar de verdad podría romper OTs existentes.
 - **`total_net`/`amount_net` calculados en la app**: los doctypes son *Custom DocType* creados por
   Desk sin controller Python (`class X(Document): pass`), así que no hay ningún hook server-side
   que sume los ítems — si se llegara a instalar una Frappe App con lógica propia en el futuro, hay
   que decidir quién manda (la app o el server) para no calcular dos veces.
 
 ## Gotchas encontrados (para no repetirlos)
+
+- **Server Actions cortan el body en 1MB** → nunca subir fotos/PDFs por Server Action (la
+  `addEvidenceAction` vieja en base64 falla con fotos reales de celular). Usar el route handler
+  de evidencia. El proxy de Next además bufferea hasta 10MB por request (tope app: 8MB).
+- **Las 5 WO Evidence Policy están todas en customer_type `ASEG`** (una por aseguradora) y la OT
+  no guarda cuál aplica → el panel deja elegirla. Falta un Link `evidence_policy_id` en Work Order.
+- **Evidencias de ejemplo del MVP tienen URLs externas** (Unsplash): `fileHref` las usa directo;
+  solo las rutas `/files`/`/private/files` pasan por `/api/files`.
+- **En el MVP el remito PDF, la factura y el ZIP de expedientes eran simulados** (archivos de
+  texto con extensión .pdf / fichas con links): hay que construirlos de verdad, no portarlos.
+- **`getList` sin `limit` → Frappe devuelve solo 20 filas.** Los catálogos y el ABM venían
+  truncados en silencio. `limit: 0` = todas (ya aplicado a catálogos, ABM y dashboard).
+- **Actualizar `next` con `npm run dev` corriendo deja el dev server en 500** (hasta `/login`):
+  queda el binario viejo en memoria con `node_modules` nuevos. Reiniciar `npm run dev`.
 
 - **`Datetime` en tablas hijas de Frappe exige `"YYYY-MM-DD HH:MM:SS"` literal** — `.toISOString()`
   de JS (`2026-08-25T23:00:00.000Z`) rompe con `MySQLdb.OperationalError: Incorrect datetime
@@ -126,14 +205,40 @@ relevante ahí, para no tener que releerlo de nuevo:
   sin sustituir) rompe el link a `/work-orders/[id]`, no es un bug de la app — es un doc mal
   creado en Frappe. Se resuelve borrándolo/no dejando que se cree así (verificar que el
   `autoname` del doctype esté bien configurado antes de crear el primer registro).
+- **`file_url` de `frappeUploadFile` no se puede linkear directo desde el browser.** Es una ruta
+  relativa al *sitio de Frappe* (`/private/files/x.png`), no a esta app — un `<a href={file_url}>`
+  resuelve mal (contra `localhost:3000`/el dominio de la app). Y aunque se arme la URL absoluta a
+  Frappe, los archivos `is_private=1` están protegidos por sesión del lado de Frappe: un click del
+  navegador no manda el header `Authorization: token key:secret` (eso solo lo puede mandar un
+  `fetch` server-side), así que igual daría error de permiso. Por eso todo link a un archivo
+  subido así tiene que pasar por el proxy `/api/files?path=<file_url>` (protegido por la sesión
+  propia de la app, hace el fetch a Frappe server-side con el service account). Detectado primero
+  en el link de la firma de entrega (`delivery_signature_url`) al agregar evidencia fotográfica.
 
-## Qué falta
+## Qué falta — roadmap para la próxima sesión
 
-- `WO Evidence Policy` + `WO Evidence Requirement` (catálogo con tabla hija) — ABM pendiente.
-- Evidencia fotográfica general (fotos antes/durante/después, más allá de la firma de entrega).
-- Adjuntar el PDF real de la factura al facturar (hoy solo se cargan número/fecha/monto).
-- Pasada de diseño/UX general (quedó explícitamente para el final, una vez cerrado el dominio
-  funcional) — colores por estado, vista Kanban, iconografía, etc., como el dashboard de
-  referencia (`ats_app_talent`) que se usó de inspiración para el formato de listados/ABMs.
-- Portal de cliente (`WO Client`, doctype ya creado, sin usar).
-- Tests (no hay ninguno configurado en el template todavía).
+Ya cerrados en esta sesión: ABM de `WO Evidence Policy` (con tabla hija) y evidencia fotográfica
+general (subida + checklist informativo), incluyendo el fix del proxy de archivos privados
+(`/api/files`) que salió al probar la firma de entrega. Quedan, en este orden:
+
+1. **Adjuntar el PDF real de la factura al facturar** (hoy `invoice`/`InvoicePanel` solo carga
+   número/fecha/monto — `invoice_file_url` ya existe en el tipo `WorkOrder` pero nada lo escribe
+   todavía). Para arrancar: mismo patrón que la firma/fotos —
+   `frappeUploadFile({ isPrivate: true, ... })` desde `InvoicePanel`/`transitionWorkOrderAction`
+   (command `invoice`) — y el link para verlo tiene que salir armado como
+   `/api/files?path=...` **desde el vamos** (no repetir el bug de `file_url` relativo, ver gotcha
+   correspondiente más arriba).
+2. **Pasada de diseño/UX general** — colores por estado, vista Kanban, iconografía, etc., tomando
+   como referencia el dashboard de `ats_app_talent` (inspiración del formato de listados/ABMs
+   actual). Explícitamente para el final, una vez cerrado el dominio funcional — este es el punto
+   natural para arrancarla si los ítems 1/3/4 no son prioritarios todavía.
+3. **Portal de cliente** — doctype `WO Client` ya creado en Frappe, sin usar por la app. Falta
+   definir alcance (¿qué puede ver/hacer un cliente final? ¿login propio o solo un link con
+   token?) antes de plantear el diseño técnico — arrancar esa conversación con el usuario, no
+   asumir el approach.
+4. **Tests** — no hay ninguno configurado en el template todavía. Definir con el usuario qué nivel
+   (¿unit sobre `ALLOWED_TRANSITIONS`/parsers de Server Actions? ¿e2e?) antes de elegir
+   herramienta (Vitest/Playwright/etc., ninguna instalada hoy).
+
+Para retomar: preguntarle al usuario cuál de estos sigue (no asumir el orden de arriba como
+obligatorio, es solo la lista tal como se fue acordando en esta sesión).

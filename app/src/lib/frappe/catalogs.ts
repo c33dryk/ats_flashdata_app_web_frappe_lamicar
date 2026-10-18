@@ -98,4 +98,21 @@ export const CATALOG_DEFS: CatalogDef[] = [
     ],
     listColumns: ["employee_id", "full_name", "specialty_segment"],
   },
+  {
+    // Único catálogo con tabla hija (requirements -> WO Evidence Requirement). Se suma acá solo
+    // para reusar listado/sidebar/activar-desactivar genéricos — el alta/edición es bespoke
+    // (EvidencePolicyForm), ver branch por catalogKey en new/page.tsx y [rowId]/edit/page.tsx.
+    key: "evidence-policies",
+    doctype: "WO Evidence Policy",
+    label: "Políticas de Evidencia",
+    newLabel: "Nueva Política de Evidencia",
+    idField: "code",
+    fields: [
+      { name: "code", label: "Código", type: "text", required: true },
+      { name: "policy_name", label: "Nombre", type: "text", required: true },
+      { name: "customer_type_id", label: "Tipo de Cliente", type: "text" },
+      { name: "is_active", label: "Activo", type: "checkbox" },
+    ],
+    listColumns: ["code", "policy_name", "customer_type_id"],
+  },
 ];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { readSessionFromCookieHeader, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { canAccessPath } from "@/lib/permissions";
 
 // Protege todo excepto: login y su API. Corre en runtime Node.js (default en Next 16 para
 // proxy), así que puede verificar la firma HMAC de la sesión acá mismo, no solo chequear que
@@ -20,7 +21,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (request.nextUrl.pathname.startsWith("/admin") && session.role !== "admin") {
+  // Pantallas por rol: fuente única en lib/permissions.ts (SCREEN_ACCESS).
+  if (!canAccessPath(session.role, request.nextUrl.pathname)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

@@ -5,7 +5,7 @@ import { LoginForm } from "@/components/login-form";
 export const dynamic = "force-dynamic";
 
 // Nombre visible de la app — mismo placeholder que app-sidebar.tsx. Reemplazar por proyecto.
-const APP_NAME = "App";
+const APP_NAME = "Lamicar";
 
 export default function LoginPage() {
   return (
@@ -13,7 +13,9 @@ export default function LoginPage() {
       {/* Columna izquierda: form */}
       <div className="flex flex-col justify-between px-8 py-10 sm:px-16 lg:px-20">
         <div>
-          <span className="text-lg font-semibold tracking-tight">{APP_NAME}</span>
+          <span className="inline-flex rounded-lg bg-white px-2.5 py-1.5">
+            <Image src="/lamicar-logo.png" alt={APP_NAME} width={125} height={32} priority className="h-8 w-auto" />
+          </span>
           <p className="mt-1.5 bg-gradient-to-r from-violet-300 to-blue-300 bg-clip-text text-[11px] font-medium uppercase tracking-[0.25em] text-transparent">
             Gestión interna
           </p>

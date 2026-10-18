@@ -1,0 +1,30 @@
+{
+  "name": "WO Vehicle",
+  "module": "Lamicar Services",
+  "custom": 1,
+  "autoname": "field:license_plate",
+  "naming_rule": "By fieldname",
+  "title_field": "license_plate",
+  "search_fields": "brand_model,client_id",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "track_changes": 1,
+  "fields": [
+    { "fieldname": "license_plate", "label": "Patente", "fieldtype": "Data", "reqd": 1, "unique": 1, "in_list_view": 1 },
+    { "fieldname": "client_id", "label": "Cliente", "fieldtype": "Link", "options": "WO Client", "in_list_view": 1, "in_standard_filter": 1 },
+    { "fieldname": "vehicle_type_id", "label": "Tipo de vehículo", "fieldtype": "Link", "options": "WO Vehicle Type", "in_standard_filter": 1 },
+    { "fieldname": "brand_model", "label": "Marca / modelo", "fieldtype": "Data", "in_list_view": 1 },
+    { "fieldname": "year", "label": "Año", "fieldtype": "Data" },
+    { "fieldname": "color", "label": "Color", "fieldtype": "Data" },
+    { "fieldname": "vin", "label": "Nº de chasis (VIN)", "fieldtype": "Data" },
+    { "fieldname": "is_active", "label": "Activo", "fieldtype": "Check", "default": "1" }
+  ],
+  "permissions": [
+    { "role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1 },
+    { "role": "WO Admin", "read": 1, "write": 1, "create": 1 },
+    { "role": "WO Recepcion", "read": 1, "write": 1, "create": 1 },
+    { "role": "WO Tecnico", "read": 1 },
+    { "role": "WO Facturador", "read": 1 },
+    { "role": "WO Auditor", "read": 1 }
+  ]
+}

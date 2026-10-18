@@ -157,3 +157,21 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Edge/IE agregan su propio ojo a los input[type=password]; lo ocultamos para que no quede
+   duplicado con el toggle propio del login (login-form.tsx). */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Autofill de Chrome/Edge pinta el input con fondo claro y deja invisibles el texto y el ojo
+   blancos del login. El box-shadow inset es la única forma de "pintar" encima de ese fondo. */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  -webkit-box-shadow: 0 0 0 1000px #16161d inset;
+  transition: background-color 9999s ease-out 0s;
+}
