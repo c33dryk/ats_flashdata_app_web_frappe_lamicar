@@ -1,7 +1,7 @@
 {
   "name": "WO Branch",
   "module": "Lamicar Services",
-  "custom": 1,
+  "custom": 0,
   "autoname": "field:code",
   "naming_rule": "By fieldname",
   "title_field": "branch_name",

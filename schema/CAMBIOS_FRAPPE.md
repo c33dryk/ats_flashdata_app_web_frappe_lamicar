@@ -5,12 +5,18 @@ notas de crédito, remitos numerados, clientes y flota, política de evidencia p
 **aditivo**: no se borra ni renombra nada existente, así que se puede aplicar sin afectar las OTs
 actuales.
 
-Convenciones (las mismas de los catálogos existentes): módulo `Lamicar Services`, Custom DocType,
-nombre del registro = un dato de negocio (código, patente, número de comprobante), baja lógica con
+Convenciones (las mismas de los catálogos existentes): módulo `Lamicar Services`, doctype de la
+app `lamicar_services` (no Custom, ver abajo), nombre del registro = un dato de negocio (código, patente, número de comprobante), baja lógica con
 `is_active` / estado `Anulado` (nunca se borra, porque otros documentos referencian por Link).
 
-> **Quién lo aplica:** un usuario Administrator / System Manager. La cuenta de servicio que usa la
-> app **no** puede crear DocTypes (recibe 403 al leerlos, es lo esperado).
+> **Cómo se aplica:** los doctypes de Lamicar **no son Custom DocTypes**: son archivos de la app
+> Frappe `lamicar_services` (`/opt/ATS/VersatileHub/services/lamicar/data/apps/lamicar_services/`,
+> repo git propio). Un cambio = editar o agregar el JSON del doctype ahí + `bench --site
+> hub.lamicar.app migrate` (lo hace quien tiene acceso al servidor). No usar Desk ni
+> `POST /api/resource/DocType`: quedaría como Custom, fuera del repo. La cuenta de servicio de la
+> app no puede crear DocTypes (403, es lo esperado). Los JSON de esta carpeta son la
+> **especificación**; la fuente de verdad es la app Frappe. Los pasos "por API / en Desk" de más
+> abajo quedan solo como referencia de los campos.
 
 ### Estado (verificado desde la app el 2026-10-18)
 
@@ -21,10 +27,13 @@ nombre del registro = un dato de negocio (código, patente, número de comproban
 | `WO Branch.point_of_sale` (punto de venta de remitos) | ⏳ pendiente |
 | DocTypes `WO Invoice` + `WO Invoice Line` (facturas / NC / ND) | ⏳ pendiente |
 | DocType `WO Delivery Note` (remitos numerados) | ⏳ pendiente |
-| DocType `WO Vehicle` (flota) | ⏳ pendiente |
-| Campos nuevos en `Work Order` (sección 3) | ⏳ pendiente |
-| Permisos de la cuenta de servicio (sección 5) | ⏳ pendiente (`WO Client` sigue dando 403) |
-| Confirmaciones (sección 6) | ⏳ pendiente |
+| DocType `WO Vehicle` (flota) | ✅ aplicado 2026-10-18 |
+| DocType `WO Client` (**no existía**, se creó; sección 4) | ✅ aplicado 2026-10-18 |
+| `Work Order.evidence_policy_id`, `.client_id`, `.vehicle_id` | ✅ aplicado 2026-10-18 |
+| `Work Order.delivery_note_id`, `.invoiced_net` | ⏳ pendiente (dependen de `WO Delivery Note`) |
+| Permisos de la cuenta de servicio (sección 5) | ✅ `WO Client` y `WO Vehicle` · ⏳ `WO Invoice`, `WO Delivery Note` |
+| `WO Evidence.zone` → `Data` (sección 6) | ✅ aplicado 2026-10-18 (era `Select`) |
+| Backups (sección 6) | ⚠️ **no hay backup automático** (ver sección 6) |
 
 ---
 
@@ -99,36 +108,41 @@ empezaría a fallar. La obligatoriedad para registros nuevos la valida la app.
 
 Sugerido: marcar `client_id` como *In Standard Filter* en Work Order.
 
-## 4. `WO Client` (ya existe, la app todavía no lo usa)
+## 4. `WO Client` ✅ (creado 2026-10-18)
 
-- Pasarnos la lista de campos actual. Lo que la app necesita como mínimo:
+**No existía** en el site: el 403 que recibía la cuenta de servicio no era de permisos, sino que
+Frappe responde 403 también para doctypes inexistentes. Se creó con estos campos:
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `client_name` | Data, obligatorio | Nombre / razón social |
-| `tax_id` | Data | CUIT / DNI — dato sensible, solo visible para roles que lo necesiten |
-| `customer_type_id` | Link `WO Customer Type` | Particular, aseguradora, flota… |
-| `phone`, `email` | Data | |
+| `client_name` | Data, obligatorio | Nombre / razón social (title field) |
+| `customer_type_id` | Link `WO Customer Type` | In Standard Filter |
+| `tax_id` | Data | CUIT / DNI. **permlevel 1**: en Desk solo lo ven Admin, Recepción y Facturador. La cuenta de la API es WO Admin y lo recibe siempre: si algún rol no debe verlo, ocultarlo en la app |
+| `phone` | Data (Phone) | |
+| `email` | Data (Email) | |
 | `address` | Small Text | |
 | `is_active` | Check, default 1 | Baja lógica |
 
-Si los nombres reales difieren, no hace falta renombrarlos: la app se adapta.
+Nombre del registro: serie `CLI-#####` (no hay un campo natural único; el CUIT/DNI puede faltar).
+`Work Order.client_id` quedó como *In Standard Filter*.
 
 ## 5. Permisos de la cuenta de servicio
 
-El Role del usuario de la API (el de `FRAPPE_API_KEY`) necesita **leer / escribir / crear** en:
-`WO Client`, `WO Vehicle`, `WO Invoice`, `WO Delivery Note` (la tabla hija `WO Invoice Line`
-hereda del padre). Sin esto, las pantallas nuevas dan 403.
+El usuario de la API tiene el rol **WO Admin**. Necesita **leer / escribir / crear** en:
+`WO Client` ✅, `WO Vehicle` ✅ (verificado creando y editando registros), `WO Invoice` ⏳,
+`WO Delivery Note` ⏳ (la tabla hija `WO Invoice Line` hereda del padre). `WO Recepcion` también
+crea clientes y vehículos; el resto de los roles solo lee. Borrar: solo System Manager.
 
 ## 6. Confirmar (sin cambios)
 
-- **`WO Evidence` → campo `zone`**: ¿es `Data` (texto libre) o `Select`? La app guarda ahí el
-  código del requisito de la política. Si es `Select`, pasarlo a `Data` (los valores actuales se
-  conservan).
+- ✅ **`WO Evidence` → campo `zone`**: era `Select`, se pasó a `Data`. Los valores existentes se
+  conservaron.
 - **Políticas de evidencia**: las 5 activas tienen `customer_type_id = ASEG`. Confirmar que es
   una política por aseguradora.
-- **Backups de Frappe Cloud**: que incluyan los **archivos privados** (fotos, firmas, PDFs de las
-  OTs), no solo la base de datos.
+- ⚠️ **Backups**: no es Frappe Cloud sino self-hosted, y hoy `hub.lamicar.app` **no tiene backup
+  automático**: ni backups programados de Frappe ni Restic (los scripts de `/opt/ATS/restic`
+  apuntan a rutas y bases que no son las de Lamicar, y no hay cron). Fotos, firmas, PDFs y base
+  de datos no tienen copia externa. Pendiente con infraestructura.
 
 ---
 

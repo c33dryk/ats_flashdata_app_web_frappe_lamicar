@@ -8,9 +8,12 @@ falta. `CLAUDE.md` explica el template en general; este archivo explica **este p
 ## Qué es esto
 
 App interna de gestión de órdenes de trabajo (OT) para un taller (Lamicar — cristales, mecánica
-ligera, calibración ADAS, etc.). Backend: Frappe Cloud (`hub.lamicar.app`), doctypes creados a
-mano vía Desk (no hay una Frappe App/módulo Python custom instalada — **no existe** ningún
-whitelisted method propio en el servidor real, todo pasa por el REST genérico de Frappe).
+ligera, calibración ADAS, etc.). Backend: Frappe v16 self-hosted en VersatileHub
+(`hub.lamicar.app`, instancia `services/lamicar/`; frappe 16.52 / erpnext 16.51 desde 2026-10-18).
+Los doctypes son de la app `lamicar_services` (módulo "Lamicar Services", **no** Custom DocTypes:
+son archivos versionados en `/opt/ATS/VersatileHub/services/lamicar/data/apps/lamicar_services/`,
+repo git propio), sin controllers con lógica ni whitelisted methods propios: todo pasa por el REST
+genérico de Frappe con la cuenta de servicio.
 
 ## Referencia: el MVP viejo (`D:\Lab\lamicar-workorders`)
 
@@ -35,7 +38,8 @@ relevante ahí, para no tener que releerlo de nuevo:
   fieldnames reales — **no** los camelCase que usaba el frontend del MVP viejo):
   `Work Order`, `Work Order Item`, `WO Evidence`, `WO Evidence Policy`, `WO Evidence Requirement`,
   `WO Customer Type`, `WO Vehicle Type`, `WO Service Segment`, `WO Service Type`, `WO Operator`,
-  `WO Work Order Event`, `WO Client` (este último sin usar todavía).
+  `WO Work Order Event`. Desde 2026-10-18 también `WO Branch`, `WO Client` y `WO Vehicle` (ver
+  `schema/CAMBIOS_FRAPPE.md`).
 - 5 Roles de Frappe ya creados en `hub.lamicar.app`: `WO Admin`, `WO Recepcion`, `WO Tecnico`,
   `WO Facturador`, `WO Auditor`.
 
@@ -184,12 +188,24 @@ relevante ahí, para no tener que releerlo de nuevo:
   comportamiento no estaba verificado para el REST genérico.
 - **Catálogos: nunca borrado real, siempre `is_active`**: los 6 están referenciados por `Link`
   desde `Work Order` — borrar de verdad podría romper OTs existentes.
-- **`total_net`/`amount_net` calculados en la app**: los doctypes son *Custom DocType* creados por
-  Desk sin controller Python (`class X(Document): pass`), así que no hay ningún hook server-side
+- **`total_net`/`amount_net` calculados en la app**: los doctypes de `lamicar_services` no tienen
+  controller Python con lógica (`class X(Document): pass`), así que no hay ningún hook server-side
   que sume los ítems — si se llegara a instalar una Frappe App con lógica propia en el futuro, hay
   que decidir quién manda (la app o el server) para no calcular dos veces.
 
 ## Gotchas encontrados (para no repetirlos)
+
+- **Cambios de esquema en Frappe = archivos en `lamicar_services` + `bench migrate`**, no Desk/API
+  ni Custom DocType (ver `schema/CAMBIOS_FRAPPE.md`). Un JSON existente solo se reimporta si
+  cambia su contenido (el sync compara hash).
+- **Frappe responde 403 también para doctypes que no existen** — así se confundió "falta permiso
+  sobre `WO Client`" con "`WO Client` no existe".
+- **`Work Order` choca con el `Work Order` de ERPNext (Manufacturing)**: en cada `migrate` se
+  reimportan los dos y gana el nuestro porque `lamicar_services` se sincroniza última (la tabla
+  acumula columnas de manufactura). Aceptado: el hub es exclusivo de Lamicar y Manufacturing no
+  se usa. Chequeo tras cada upgrade: `Work Order` sigue con module = Lamicar Services.
+- **Sin backup automático de `hub.lamicar.app`** (ni Frappe programado ni Restic): antes de
+  cambios de esquema o upgrades, `bench --site hub.lamicar.app backup --with-files`.
 
 - **Server Actions cortan el body en 1MB** → nunca subir fotos/PDFs por Server Action (la
   `addEvidenceAction` vieja en base64 falla con fotos reales de celular). Usar el route handler
@@ -251,7 +267,8 @@ general (subida + checklist informativo), incluyendo el fix del proxy de archivo
    como referencia el dashboard de `ats_app_talent` (inspiración del formato de listados/ABMs
    actual). Explícitamente para el final, una vez cerrado el dominio funcional — este es el punto
    natural para arrancarla si los ítems 1/3/4 no son prioritarios todavía.
-3. **Portal de cliente** — doctype `WO Client` ya creado en Frappe, sin usar por la app. Falta
+3. **Portal de cliente** — `WO Client` existe desde 2026-10-18 (maestro de clientes), todavía
+   sin pantallas en la app. Falta
    definir alcance (¿qué puede ver/hacer un cliente final? ¿login propio o solo un link con
    token?) antes de plantear el diseño técnico — arrancar esa conversación con el usuario, no
    asumir el approach.
