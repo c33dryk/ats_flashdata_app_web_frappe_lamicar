@@ -14,10 +14,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
-import { EvidenceSection } from "@/components/work-orders/evidence-section";
+import { EvidenceCard } from "@/components/work-orders/evidence-card";
 import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { getEvidencePolicyForCustomerType, getWorkOrder, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
+import { getEvidencePoliciesForCustomerType, getWorkOrder, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
+import { EVIDENCE_LOCKED_STATUSES } from "@/lib/evidence";
 import { FrappeApiError } from "@/lib/frappe/client";
 
 const moneyFmt = new Intl.NumberFormat("es-AR", {
@@ -61,12 +62,12 @@ export default async function WorkOrderDetailPage({
   const session = await getSession();
 
   let wo: Awaited<ReturnType<typeof getWorkOrder>> | null = null;
-  let evidencePolicy: WoEvidencePolicy | null = null;
+  let evidencePolicies: WoEvidencePolicy[] = [];
   let errorMessage: string | null = null;
 
   try {
     wo = await getWorkOrder(id);
-    evidencePolicy = await getEvidencePolicyForCustomerType(wo.customer_type_id);
+    evidencePolicies = await getEvidencePoliciesForCustomerType(wo.customer_type_id);
   } catch (err) {
     if (err instanceof FrappeApiError && err.status === 404) {
       notFound();
@@ -214,7 +215,11 @@ export default async function WorkOrderDetailPage({
             </Card>
 
             {session && (
-              <EvidenceSection workOrder={wo} role={session.role} policy={evidencePolicy} />
+              <EvidenceCard
+                workOrder={wo}
+                policies={evidencePolicies}
+                canEdit={can(session.role, "uploadEvidence") && !EVIDENCE_LOCKED_STATUSES.includes(wo.status)}
+              />
             )}
 
             <Card>

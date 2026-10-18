@@ -20,17 +20,7 @@ export interface TransitionState {
   error: string | null;
 }
 
-export interface AddEvidenceState {
-  error: string | null;
-  success: boolean;
-}
-
 const EVIDENCE_LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
-const PHOTO_TYPES = ["photo_before", "photo_during", "photo_after"] as const;
-
-function isPhotoType(value: string | undefined): value is (typeof PHOTO_TYPES)[number] {
-  return !!value && (PHOTO_TYPES as readonly string[]).includes(value);
-}
 
 // Campos "Datetime" de Frappe en tablas hijas se insertan tal cual contra MySQL (no pasan por la
 // normalización que sí aplica a los campos de nivel superior) — necesitan literalmente
@@ -179,80 +169,6 @@ export async function transitionWorkOrderAction(
   revalidatePath("/operaciones");
   revalidatePath("/dashboard");
   return { error: null };
-}
-
-export async function addEvidenceAction(
-  _prevState: AddEvidenceState,
-  formData: FormData
-): Promise<AddEvidenceState> {
-  const session = await getSession();
-  if (!session || !can(session.role, "uploadEvidence")) {
-    return { error: "No tenés permiso para cargar evidencia.", success: false };
-  }
-
-  const orderId = str(formData, "order_id");
-  const expectedModified = str(formData, "expected_modified");
-  const evidenceType = str(formData, "evidence_type");
-  const photoDataUrl = str(formData, "photo_data_url");
-  if (!orderId || !isPhotoType(evidenceType) || !photoDataUrl) {
-    return { error: "Solicitud inválida.", success: false };
-  }
-
-  let fresh: WorkOrder;
-  try {
-    fresh = await getWorkOrder(orderId);
-  } catch {
-    return { error: "No se pudo leer la orden de trabajo. Recargá la página.", success: false };
-  }
-
-  if (fresh.modified !== expectedModified) {
-    return { error: "La orden fue modificada por otro usuario. Recargá la página.", success: false };
-  }
-  if (EVIDENCE_LOCKED_STATUSES.includes(fresh.status as (typeof EVIDENCE_LOCKED_STATUSES)[number])) {
-    return { error: "Esta orden ya no admite carga de evidencia.", success: false };
-  }
-
-  const base64 = photoDataUrl.split(",").pop() ?? "";
-  const filename = str(formData, "filename") || `evidencia_${orderId}_${Date.now()}.jpg`;
-  let fileUrl: string;
-  try {
-    const uploaded = await frappeUploadFile({
-      filename,
-      contentBase64: base64,
-      isPrivate: true,
-      doctype: "Work Order",
-      docname: orderId,
-    });
-    fileUrl = uploaded.file_url;
-  } catch (err) {
-    return {
-      error: err instanceof FrappeApiError ? `No se pudo subir la foto (${err.status}).` : "No se pudo subir la foto.",
-      success: false,
-    };
-  }
-
-  const evidenceRow: WoEvidence = {
-    type: evidenceType,
-    zone: str(formData, "zone"),
-    url: fileUrl,
-    filename,
-    notes: str(formData, "notes"),
-  };
-
-  try {
-    await updateWorkOrder(orderId, { evidence: [...(fresh.evidence ?? []), evidenceRow] });
-  } catch (err) {
-    return {
-      error:
-        err instanceof FrappeApiError
-          ? ((err.body as { message?: string } | undefined)?.message ?? `No se pudo guardar la foto (${err.status}).`)
-          : "No se pudo guardar la foto.",
-      success: false,
-    };
-  }
-
-  revalidatePath(`/work-orders/${orderId}`);
-  return { error: null, success: true };
 }
 
 export async function removeEvidenceAction(

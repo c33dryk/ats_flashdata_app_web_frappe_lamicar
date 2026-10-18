@@ -429,21 +429,6 @@ export async function getEvidencePoliciesForCustomerType(
   return Promise.all(matches.map((m) => getEvidencePolicy(m.name)));
 }
 
-export async function getEvidencePolicyForCustomerType(
-  customerTypeId?: string
-): Promise<WoEvidencePolicy | null> {
-  if (!customerTypeId) return null;
-  const matches = await getList<WoEvidencePolicy>("WO Evidence Policy", {
-    fields: ["name"],
-    filters: [
-      ["customer_type_id", "=", customerTypeId],
-      ["is_active", "=", 1],
-    ],
-    limit: 1,
-  });
-  return matches.length ? getEvidencePolicy(matches[0].name) : null;
-}
-
 export { deleteDoc };
 
 // ── Máquina de estados y permisos ───────────────────────────────────────────
