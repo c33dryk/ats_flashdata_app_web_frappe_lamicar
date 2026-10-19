@@ -1,7 +1,7 @@
 {
   "name": "WO Vehicle",
   "module": "Lamicar Services",
-  "custom": 1,
+  "custom": 0,
   "autoname": "field:license_plate",
   "naming_rule": "By fieldname",
   "title_field": "license_plate",

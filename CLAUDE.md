@@ -137,7 +137,8 @@ No hay NextAuth ni SDK de Frappe del lado del navegador. El flujo es:
 - `auth.ts` — `loginToFrappe` (login de usuario final) y `getAppRoleForUser` (mapeo de los 5
   Roles `WO *` de Frappe a `AppRole`).
 
-En `hub.lamicar.app` los doctypes son Custom DocTypes creados por Desk, **sin controller Python ni
+En `hub.lamicar.app` los doctypes son de la app Frappe `lamicar_services` (archivos versionados,
+no Custom DocTypes; ver `schema/CAMBIOS_FRAPPE.md`), **sin controller Python con lógica ni
 whitelisted methods propios**: toda la lógica de negocio (máquina de estados `ALLOWED_TRANSITIONS`/
 `COMMAND_ROLES`, totales de ítems, concurrencia optimista comparando `modified`) vive en la app
 Next. Pensar en esto al migrar a una Frappe App con lógica server-side (decidir quién manda).
