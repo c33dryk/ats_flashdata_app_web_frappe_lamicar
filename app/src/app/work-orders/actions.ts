@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -8,10 +7,11 @@ import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { createWorkOrder, getBranches, type WorkOrder } from "@/lib/frappe/work-orders";
 import { resolveOrderParties } from "@/lib/frappe/order-parties";
+import { parseMileage } from "@/lib/format";
 
 export interface CreateWorkOrderState {
   error: string | null;
-  /** Nº de la OT creada, cuando el form pidió quedarse en la pantalla (stay=1). */
+  /** Nº de la OT creada (el form vive en el panel lateral y la abre/avisa). */
   createdName?: string;
 }
 
@@ -31,11 +31,13 @@ export async function createWorkOrderAction(
   if (!vehicleId) return { error: "Elegí o creá la unidad (patente) de la orden." };
   const parties = await resolveOrderParties({ clientId, vehicleId });
   if (!parties.ok) return { error: parties.error };
+  const mileage = parseMileage(str(formData, "vehicle_mileage"));
+  if (!mileage.ok) return { error: mileage.error };
 
   const payload: Partial<WorkOrder> = {
     ...parties.data,
     siniestro: str(formData, "siniestro"),
-    vehicle_mileage: str(formData, "vehicle_mileage"),
+    vehicle_mileage: mileage.value || undefined,
     service_segment_id: str(formData, "service_segment_id"),
     service_type_id: str(formData, "service_type_id"),
     assigned_operator_id: str(formData, "assigned_operator_id"),
@@ -62,13 +64,7 @@ export async function createWorkOrderAction(
     return { error: message };
   }
 
-  // Desde el modal de /operaciones (stay=1): no navegar, devolver la OT creada y refrescar listas.
-  if (formData.get("stay") === "1") {
-    revalidatePath("/operaciones");
-    revalidatePath("/dashboard");
-    revalidatePath("/work-orders");
-    return { error: null, createdName: created.name };
-  }
-
-  redirect(`/work-orders/${created.name}`);
+  revalidatePath("/operaciones");
+  revalidatePath("/dashboard");
+  return { error: null, createdName: created.name };
 }

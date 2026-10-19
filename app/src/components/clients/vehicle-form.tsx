@@ -93,7 +93,17 @@ export function VehicleForm({
         </div>
         <div className="space-y-1">
           <Label htmlFor={`${id}-year`}>Año</Label>
-          <Input id={`${id}-year`} value={values.year} onChange={set("year")} inputMode="numeric" />
+          <Input
+            id={`${id}-year`}
+            value={values.year}
+            onChange={set("year")}
+            type="number"
+            min={1950}
+            max={new Date().getFullYear() + 1}
+            step={1}
+            inputMode="numeric"
+            placeholder="Ej. 2019"
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor={`${id}-color`}>Color</Label>

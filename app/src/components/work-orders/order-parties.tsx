@@ -8,6 +8,7 @@ import { getClientAction } from "@/app/clientes/actions";
 import { ClientPicker } from "@/components/clients/client-picker";
 import { VehiclePicker } from "@/components/clients/vehicle-picker";
 import type { WoClient, WoVehicle } from "@/lib/clients-shared";
+import { parseMileage } from "@/lib/format";
 import type { WoCustomerType, WoVehicleType, WorkOrder } from "@/lib/frappe/work-orders";
 
 // Tarjetas "Cliente" y "Vehículo" del form de OT (alta y edición): cliente y unidad salen de los
@@ -53,6 +54,9 @@ export function OrderParties({
       if (res.ok) setVehicleOwner(res.data);
     }
   }
+
+  // Km cargado en la OT (los viejos pueden venir como "14.500 km"): se muestra ya limpio.
+  const initialMileage = parseMileage(workOrder?.vehicle_mileage);
 
   const legacyNote = (text: string) => (
     <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
@@ -107,7 +111,17 @@ export function OrderParties({
           />
           <div className="space-y-1">
             <Label htmlFor="vehicle_mileage">Kilometraje al ingreso</Label>
-            <Input id="vehicle_mileage" name="vehicle_mileage" inputMode="numeric" defaultValue={workOrder?.vehicle_mileage} />
+            <Input
+              id="vehicle_mileage"
+              name="vehicle_mileage"
+              type="number"
+              min={0}
+              max={2000000}
+              step={1}
+              inputMode="numeric"
+              placeholder="Ej. 14500"
+              defaultValue={initialMileage.ok ? initialMileage.value : ""}
+            />
           </div>
         </CardContent>
       </Card>

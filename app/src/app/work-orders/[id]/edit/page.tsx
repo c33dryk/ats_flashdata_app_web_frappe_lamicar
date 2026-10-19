@@ -58,7 +58,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
       <Topbar>
         <Breadcrumbs
           items={[
-            { label: "Órdenes de Trabajo", href: "/work-orders" },
+            { label: "Operaciones", href: `/operaciones?ot=${encodeURIComponent(id)}` },
             { label: id, href: `/work-orders/${id}` },
             { label: "Editar" },
           ]}

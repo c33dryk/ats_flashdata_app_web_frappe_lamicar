@@ -186,35 +186,6 @@ export interface WoEvidencePolicy {
 
 // ── Work Order ────────────────────────────────────────────────────────────
 
-const WORK_ORDER_LIST_FIELDS = [
-  "name",
-  "status",
-  "siniestro",
-  "customer_type_id",
-  "customer_name",
-  "customer_phone",
-  "vehicle_type_id",
-  "license_plate",
-  "vehicle_brand_model",
-  "service_segment_id",
-  "service_type_id",
-  "assigned_operator_id",
-  "branch_id",
-  "total_net",
-  "row_version",
-  "modified",
-  "creation",
-];
-
-export function getWorkOrders(options?: { status?: WorkOrderStatus; limit?: number }) {
-  return getList<WorkOrder>("Work Order", {
-    fields: WORK_ORDER_LIST_FIELDS,
-    filters: options?.status ? [["status", "=", options.status]] : undefined,
-    limit: options?.limit ?? 500,
-    orderBy: "modified desc",
-  });
-}
-
 // Filas livianas para el dashboard y /operaciones: todas las OTs (limit 0), solo los campos que
 // usan lib/dashboard-metrics.ts y la lista/kanban. Las agregaciones se calculan en la app — al migrar a Frappe esto pasa
 // a un whitelisted method / Report con GROUP BY en SQL en vez de traer todas las filas.

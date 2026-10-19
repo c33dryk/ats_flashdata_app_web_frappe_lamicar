@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getEvidencePoliciesForCustomerType, getWorkOrder } from "@/lib/frappe/work-orders";
+import { getClient, getVehicle } from "@/lib/frappe/clients";
+import { can } from "@/lib/permissions";
 
-// GET /api/work-orders/:id — la OT completa + las políticas de evidencia de su tipo de cliente.
+// GET /api/work-orders/:id — la OT completa + las políticas de evidencia de su tipo de cliente +
+// el cliente y la unidad vinculados (para editarla en el panel; CUIT solo a quien puede verlo).
 // La consume el panel lateral de /operaciones (client-side, para abrirlo sin recargar la lista).
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -12,8 +15,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   try {
     const workOrder = await getWorkOrder(id);
-    const policies = await getEvidencePoliciesForCustomerType(workOrder.customer_type_id);
-    return NextResponse.json({ workOrder, policies });
+    const [policies, client, vehicle] = await Promise.all([
+      getEvidencePoliciesForCustomerType(workOrder.customer_type_id),
+      workOrder.client_id ? getClient(workOrder.client_id).catch(() => null) : null,
+      workOrder.vehicle_id ? getVehicle(workOrder.vehicle_id).catch(() => null) : null,
+    ]);
+    const safeClient = client && !can(session.role, "viewTaxId") ? { ...client, tax_id: undefined } : client;
+    return NextResponse.json({ workOrder, policies, client: safeClient, vehicle });
   } catch (err) {
     const status = err instanceof FrappeApiError ? err.status : 502;
     return NextResponse.json(

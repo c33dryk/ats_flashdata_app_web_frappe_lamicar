@@ -14,15 +14,14 @@ import {
 } from "@/lib/frappe/work-orders";
 import type { DashboardCatalogs } from "@/lib/dashboard-metrics";
 
-// Módulo de Operaciones: nueva versión del listado de OTs (indicadores + lista por defecto +
-// kanban por estado). Convive con /work-orders, que queda como estaba hasta validar esta pantalla;
-// el detalle/edición/transiciones siguen siendo /work-orders/[id].
+// Operaciones: indicadores + lista / kanban de OTs. Ver, crear (?nueva=1) y editar una OT se hace
+// en el panel lateral sin salir de la pantalla; /work-orders/[id] queda como "página completa".
 export default async function OperacionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ vista?: string; filtro?: string }>;
+  searchParams: Promise<{ vista?: string; filtro?: string; nueva?: string }>;
 }) {
-  const { vista, filtro } = await searchParams;
+  const { vista, filtro, nueva } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -64,7 +63,8 @@ export default async function OperacionesPage({
             initialView={vista === "kanban" ? "kanban" : "list"}
             initialFilter={filtro}
             role={session.role}
-            newOrderCatalogs={raw && can(session.role, "createOrder") ? raw : undefined}
+            formCatalogs={raw && (can(session.role, "createOrder") || can(session.role, "editOrder")) ? raw : undefined}
+            initialCreating={nueva === "1" && can(session.role, "createOrder")}
           />
         )}
       </div>

@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { resolveOrderParties } from "@/lib/frappe/order-parties";
+import { parseMileage } from "@/lib/format";
 import { getWorkOrder, updateWorkOrder, type WorkOrder, type WorkOrderItem } from "@/lib/frappe/work-orders";
 
 export interface EditWorkOrderState {
@@ -88,11 +89,13 @@ export async function updateWorkOrderAction(
     vehicleId: str(formData, "vehicle_id"),
   });
   if (!parties.ok) return { error: parties.error, success: false };
+  const mileage = parseMileage(str(formData, "vehicle_mileage"));
+  if (!mileage.ok) return { error: mileage.error, success: false };
 
   const payload: Partial<WorkOrder> = {
     ...parties.data,
     siniestro: str(formData, "siniestro") ?? "",
-    vehicle_mileage: str(formData, "vehicle_mileage") ?? "",
+    vehicle_mileage: mileage.value,
     service_segment_id: str(formData, "service_segment_id"),
     service_type_id: str(formData, "service_type_id"),
     assigned_operator_id: str(formData, "assigned_operator_id"),
@@ -115,6 +118,6 @@ export async function updateWorkOrderAction(
   }
 
   revalidatePath(`/work-orders/${orderId}`);
-  revalidatePath("/work-orders");
+  revalidatePath("/operaciones");
   return { error: null, success: true };
 }

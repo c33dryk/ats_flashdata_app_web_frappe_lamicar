@@ -27,13 +27,15 @@ import { toast } from "@/components/ui/toast";
 import { EvidenceChecklist } from "@/components/work-orders/evidence-checklist";
 import { StatusBadge } from "@/components/work-orders/status-badge";
 import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
+import { EditWorkOrderForm } from "@/components/work-orders/edit-work-order-form";
+import type { WoClient, WoVehicle } from "@/lib/clients-shared";
 import { labelOf, type DashboardCatalogs } from "@/lib/dashboard-metrics";
 import { EVIDENCE_LOCKED_STATUSES, requirementCount } from "@/lib/evidence";
 import { fmtMileage, fmtMoney } from "@/lib/format";
 import { can, canAccessPath } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/auth-shared";
-import type { WoEvidencePolicy, WorkOrder, WorkOrderStatus } from "@/lib/frappe/work-orders";
+import type { RawCatalogs, WoEvidencePolicy, WorkOrder, WorkOrderStatus } from "@/lib/frappe/work-orders";
 
 // Panel lateral de una OT (estilo "task panel" de ClickUp, sobre el marco común SidePanel):
 // estado + avance del flujo, propiedades en filas con ícono, pestañas (Fotos y archivos /
@@ -49,6 +51,8 @@ const FLOW: WorkOrderStatus[] = ["Nueva", "En Curso", "Terminada", "Entregada", 
 interface PanelData {
   workOrder: WorkOrder;
   policies: WoEvidencePolicy[];
+  client: WoClient | null;
+  vehicle: WoVehicle | null;
 }
 
 async function fetchPanel(name: string): Promise<{ data?: PanelData; error?: string }> {
@@ -81,6 +85,7 @@ export function WorkOrderPanel({
   initialAction,
   onClose,
   section = "Operaciones",
+  formCatalogs,
 }: {
   /** Pantalla desde donde se abrió (primer tramo de la ruta del panel). */
   section?: string;
@@ -90,10 +95,13 @@ export function WorkOrderPanel({
   /** Panel de acción a abrir de entrada (ej. "deliver" al soltar en Entregada en el kanban). */
   initialAction?: string;
   onClose: () => void;
+  /** Catálogos del form de edición: si llegan (rol que edita), "Editar" se abre en el mismo panel. */
+  formCatalogs?: RawCatalogs;
 }) {
   const [data, setData] = useState<PanelData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("files");
+  const [editing, setEditing] = useState(false);
 
   // Cada incremento vuelve a pedir la OT (tras una transición, un borrado o un conflicto).
   const [reloadTick, setReloadTick] = useState(0);
@@ -130,7 +138,7 @@ export function WorkOrderPanel({
   return (
     <SidePanel
       section={section}
-      title={name}
+      title={editing ? `Editar ${name}` : name}
       onClose={onClose}
       actions={
         <>
@@ -150,7 +158,7 @@ export function WorkOrderPanel({
         </>
       }
       footer={
-        wo && (
+        wo && !editing && (
           <div className="flex flex-wrap items-start gap-2">
             <div className="min-w-0 flex-1">
               <WorkOrderActions
@@ -161,11 +169,16 @@ export function WorkOrderPanel({
                 onSuccess={() => load()}
               />
             </div>
-            {canEditOrder && (
-              <Link href={`/work-orders/${wo.name}/edit`} className={buttonVariants({ variant: "outline" })}>
-                <Pencil className="size-4" /> Editar
-              </Link>
-            )}
+            {canEditOrder &&
+              (formCatalogs ? (
+                <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil className="size-4" /> Editar
+                </Button>
+              ) : (
+                <Link href={`/work-orders/${wo.name}/edit`} className={buttonVariants({ variant: "outline" })}>
+                  <Pencil className="size-4" /> Editar
+                </Link>
+              ))}
           </div>
         )
       }
@@ -182,6 +195,23 @@ export function WorkOrderPanel({
           ) : (
             <Loader2 className="size-6 animate-spin" aria-label="Cargando" />
           )}
+        </div>
+      ) : editing && formCatalogs ? (
+        <div className="px-4 pt-4 sm:px-6">
+          <EditWorkOrderForm
+            key={wo.modified}
+            workOrder={wo}
+            {...formCatalogs}
+            canViewTaxId={can(role, "viewTaxId")}
+            initialClient={data!.client}
+            initialVehicle={data!.vehicle}
+            onSaved={() => {
+              toast.add({ title: `${wo.name} actualizada`, type: "success" });
+              setEditing(false);
+              load();
+            }}
+            onCancel={() => setEditing(false)}
+          />
         </div>
       ) : (
         <div className="space-y-5 px-4 py-4 sm:px-6">

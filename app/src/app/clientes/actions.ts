@@ -15,6 +15,7 @@ import {
   updateVehicle,
 } from "@/lib/frappe/clients";
 import { digitsOnly, normalizePlate, type WoClient, type WoVehicle } from "@/lib/clients-shared";
+import { parseVehicleYear } from "@/lib/format";
 
 // Server Actions de clientes y unidades: las usan los ABM (/clientes, /unidades) y el alta rápida
 // desde el form de OT (pickers). Lógica de negocio server-side: permisos, normalización de
@@ -153,13 +154,15 @@ export async function saveVehicleAction(input: VehicleInput): Promise<Result<WoV
 
   const plate = normalizePlate(input.license_plate ?? "");
   if (plate.length < 5) return { ok: false, error: "Ingresá una patente válida." };
+  const year = parseVehicleYear(input.year);
+  if (!year.ok) return { ok: false, error: year.error };
 
   const payload: Partial<WoVehicle> = {
     license_plate: plate,
     client_id: input.client_id || undefined,
     vehicle_type_id: input.vehicle_type_id || undefined,
     brand_model: input.brand_model?.trim() || undefined,
-    year: input.year?.trim() || undefined,
+    year: year.value || undefined,
     color: input.color?.trim() || undefined,
     vin: input.vin?.trim() || undefined,
   };
@@ -177,7 +180,7 @@ export async function saveVehicleAction(input: VehicleInput): Promise<Result<WoV
       client_id: input.client_id ?? "",
       vehicle_type_id: input.vehicle_type_id ?? "",
       brand_model: input.brand_model?.trim() ?? "",
-      year: input.year?.trim() ?? "",
+      year: year.value,
       color: input.color?.trim() ?? "",
       vin: input.vin?.trim() ?? "",
     });

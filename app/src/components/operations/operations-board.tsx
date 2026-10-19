@@ -61,18 +61,30 @@ export function OperationsBoard({
   initialView,
   initialFilter,
   role,
-  newOrderCatalogs,
+  formCatalogs,
+  initialCreating = false,
 }: {
   rows: DashboardWorkOrder[];
   catalogs: DashboardCatalogs;
   initialView: OperationsView;
   initialFilter?: string;
   role: AppRole;
-  /** Catálogos para el alta de OT; solo llegan si el rol puede crear órdenes. */
-  newOrderCatalogs?: RawCatalogs;
+  /** Catálogos de los forms de alta/edición de OT; solo llegan si el rol puede crear o editar. */
+  formCatalogs?: RawCatalogs;
+  /** Abrir el panel de Nueva Orden de entrada (?nueva=1). */
+  initialCreating?: boolean;
 }) {
   const [view, setView] = useState<OperationsView>(initialView);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreatingState] = useState(initialCreating);
+  const canCreate = !!formCatalogs && can(role, "createOrder");
+  function setCreating(value: boolean) {
+    setCreatingState(value);
+    if (!value) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("nueva");
+      window.history.replaceState(null, "", url);
+    }
+  }
 
   const { openOt, panelAction, openOrder, closeOrder, onOrderLinkClick } = useOrderPanel();
   const [query, setQuery] = useState("");
@@ -257,7 +269,7 @@ export function OperationsBoard({
             Restablecer
           </button>
         )}
-        {newOrderCatalogs && (
+        {canCreate && (
           <Button type="button" className="ml-auto" onClick={() => setCreating(true)}>
             <Plus className="size-4" /> Nueva Orden
           </Button>
@@ -384,15 +396,17 @@ export function OperationsBoard({
           catalogs={catalogs}
           initialAction={panelAction}
           onClose={closeOrder}
+          formCatalogs={can(role, "editOrder") ? formCatalogs : undefined}
         />
       )}
 
-      {newOrderCatalogs && creating && (
+      {canCreate && creating && (
         <SidePanel section="Operaciones" title="Nueva orden de trabajo" onClose={() => setCreating(false)}>
           <div className="px-4 pt-4 sm:px-6">
             <NewWorkOrderForm
-              {...newOrderCatalogs}
+              {...formCatalogs!}
               canViewTaxId={can(role, "viewTaxId")}
+              canManageBranches={can(role, "manageCatalogs")}
               onCancel={() => setCreating(false)}
               onCreated={(name) => {
                 setCreating(false);

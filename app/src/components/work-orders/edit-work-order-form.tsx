@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import { updateWorkOrderAction, type EditWorkOrderState } from "@/app/work-orders/[id]/edit/actions";
+import { BranchField } from "@/components/work-orders/branch-field";
 import { OrderParties } from "@/components/work-orders/order-parties";
 import type { WoClient, WoVehicle } from "@/lib/clients-shared";
 import type {
@@ -52,6 +53,8 @@ export function EditWorkOrderForm({
   canViewTaxId = false,
   initialClient = null,
   initialVehicle = null,
+  onSaved,
+  onCancel,
 }: {
   workOrder: WorkOrder;
   customerTypes: WoCustomerType[];
@@ -64,6 +67,9 @@ export function EditWorkOrderForm({
   /** Cliente / unidad vinculados (si la OT ya está vinculada a los maestros). */
   initialClient?: WoClient | null;
   initialVehicle?: WoVehicle | null;
+  /** En el panel lateral: al guardar / cancelar vuelve a la vista de la OT en vez de navegar. */
+  onSaved?: () => void;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateWorkOrderAction, initialState);
@@ -71,8 +77,11 @@ export function EditWorkOrderForm({
   const [items, setItems] = useState<WorkOrderItem[]>(workOrder.items ?? []);
 
   useEffect(() => {
-    if (state.success) router.push(`/work-orders/${workOrder.name}`);
-  }, [state.success, router, workOrder.name]);
+    if (!state.success) return;
+    if (onSaved) onSaved();
+    else router.push(`/work-orders/${workOrder.name}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   const filteredServiceTypes = useMemo(
     () => (segment ? serviceTypes.filter((s) => s.segment === segment) : serviceTypes),
@@ -99,7 +108,7 @@ export function EditWorkOrderForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4">
+    <form action={handleSubmit} className="@container space-y-4">
       <input type="hidden" name="order_id" value={workOrder.name} />
       <input type="hidden" name="expected_modified" value={workOrder.modified ?? ""} />
 
@@ -109,7 +118,9 @@ export function EditWorkOrderForm({
         </p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <BranchField branches={branches} required={false} defaultValue={workOrder.branch_id ?? ""} />
+
+      <div className="grid gap-4 @3xl:grid-cols-2">
         <OrderParties
           customerTypes={customerTypes}
           vehicleTypes={vehicleTypes}
@@ -119,7 +130,7 @@ export function EditWorkOrderForm({
           workOrder={workOrder}
         />
 
-        <Card className="lg:col-span-2">
+        <Card className="@3xl:col-span-2">
           <CardHeader>
             <CardTitle>Servicio</CardTitle>
           </CardHeader>
@@ -173,28 +184,6 @@ export function EditWorkOrderForm({
                 ))}
               </select>
             </div>
-            {branches.length > 0 && (
-              <div className="space-y-1">
-                <Label htmlFor="branch_id">Sucursal{false ? " *" : ""}</Label>
-                <select
-                  id="branch_id"
-                  name="branch_id"
-                  defaultValue={workOrder.branch_id ?? ""}
-                  required={false}
-                  className={selectClassName}
-                >
-                  <option value="">{false ? "Elegí una sucursal" : "Sin sucursal"}</option>
-                  {workOrder.branch_id && !branches.some((b) => b.name === workOrder.branch_id) && (
-                    <option value={workOrder.branch_id}>{workOrder.branch_id} (inactiva)</option>
-                  )}
-                  {branches.map((b) => (
-                    <option key={b.name} value={b.name}>
-                      {b.branch_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             <div className="col-span-2 space-y-1">
               <Label htmlFor="description">Descripción del trabajo</Label>
               <Textarea id="description" name="description" rows={4} defaultValue={workOrder.description} />
@@ -268,13 +257,19 @@ export function EditWorkOrderForm({
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-2">
+      <div className="sticky bottom-0 flex items-center gap-2 border-t border-border bg-card py-3">
         <Button type="submit" disabled={pending}>
           {pending ? "Guardando..." : "Guardar cambios"}
         </Button>
-        <Link href={`/work-orders/${workOrder.name}`} className={buttonVariants({ variant: "outline" })}>
-          Cancelar
-        </Link>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+            Cancelar
+          </Button>
+        ) : (
+          <Link href={`/work-orders/${workOrder.name}`} className={buttonVariants({ variant: "outline" })}>
+            Cancelar
+          </Link>
+        )}
       </div>
     </form>
   );

@@ -165,7 +165,6 @@ export async function transitionWorkOrderAction(
   }
 
   revalidatePath(`/work-orders/${orderId}`);
-  revalidatePath("/work-orders");
   revalidatePath("/operaciones");
   revalidatePath("/dashboard");
   return { error: null };

@@ -181,7 +181,15 @@ relevante ahí, para no tener que releerlo de nuevo:
     técnico. "Órdenes de Trabajo" salió del menú (la página completa de cada OT sigue).
 25. **Patrón único: panel lateral** (`components/ui/side-panel.tsx`) para ver/crear/editar sin
     salir de la pantalla: OT, Nueva Orden, clientes, unidades. En el celular ocupa la pantalla.
-    `Modal` queda solo para confirmaciones chicas (motivo de pendiente, visor de fotos). Sin
+    `Modal` queda solo para confirmaciones chicas (motivo de pendiente, visor de fotos).
+    **Editar** una OT también se hace en el panel (modo edición del panel de OT, con
+    `EditWorkOrderForm` + `onSaved`/`onCancel`). El listado viejo `/work-orders` redirige a
+    `/operaciones` y `/work-orders/new` a `/operaciones?nueva=1` (abre el panel de alta); la
+    "página completa" `/work-orders/[id]` (+`/edit`) sigue y sus migas vuelven a Operaciones.
+    **Sucursal / taller** es el primer campo del alta y la edición (`BranchField`): siempre
+    visible; si no hay sucursales lo avisa (admin: link a Configuración). **Km y año numéricos**:
+    `parseMileage` / `parseVehicleYear` en `lib/format.ts` validan en el server (el campo en
+    Frappe es Data; se guarda solo con dígitos) y `fmtMileage` muestra "14.500 km". Sin
     contornos verdes en tarjetas (el verde de marca solo marca destino al arrastrar en el kanban).
 19. **Logo Lamicar** (`public/lamicar-logo.png`, recortado del original de lamicar.ar): sidebar,
     topbar en mobile y login; en fondos oscuros va sobre pastilla blanca (el azul no contrasta).

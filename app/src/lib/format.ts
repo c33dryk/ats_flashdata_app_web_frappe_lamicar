@@ -29,8 +29,38 @@ export function todayInShopTZ(): string {
   }).format(new Date());
 }
 
-/** Kilometraje para mostrar: el campo es texto libre y a veces ya trae "km" ("14.500 km"). */
+const MAX_MILEAGE = 2_000_000;
+
+/**
+ * Kilometraje ingresado → entero en texto ("14500"), o error. Acepta lo que la gente escribe
+ * ("14.500", "14500 km") y lo limpia; vacío = sin dato. En Frappe el campo es Data, por eso se
+ * guarda como texto pero siempre con solo dígitos.
+ */
+export function parseMileage(value?: string): { ok: true; value: string } | { ok: false; error: string } {
+  const raw = (value ?? "").trim();
+  if (!raw) return { ok: true, value: "" };
+  const cleaned = raw.replace(/\s*km\s*$/i, "").replace(/[.\s]/g, "");
+  if (!/^\d+$/.test(cleaned)) return { ok: false, error: "El kilometraje tiene que ser un número entero (ej. 14500)." };
+  const n = Number(cleaned);
+  if (n > MAX_MILEAGE) return { ok: false, error: "El kilometraje parece incorrecto (más de 2.000.000 km)." };
+  return { ok: true, value: String(n) };
+}
+
+/** Año del vehículo → 4 dígitos entre 1950 y el año que viene, o error; vacío = sin dato. */
+export function parseVehicleYear(value?: string): { ok: true; value: string } | { ok: false; error: string } {
+  const raw = (value ?? "").trim();
+  if (!raw) return { ok: true, value: "" };
+  const max = new Date().getFullYear() + 1;
+  if (!/^\d{4}$/.test(raw) || Number(raw) < 1950 || Number(raw) > max) {
+    return { ok: false, error: `El año tiene que ser de 4 dígitos, entre 1950 y ${max}.` };
+  }
+  return { ok: true, value: raw };
+}
+
+/** Kilometraje para mostrar: "14.500 km". Valores viejos cargados como texto ("14.500 km") se respetan. */
 export function fmtMileage(value?: string): string | undefined {
   if (!value?.trim()) return undefined;
-  return /km/i.test(value) ? value.trim() : `${value.trim()} km`;
+  const v = value.trim();
+  if (/^\d+$/.test(v)) return `${Number(v).toLocaleString("es-AR")} km`;
+  return /km/i.test(v) ? v : `${v} km`;
 }

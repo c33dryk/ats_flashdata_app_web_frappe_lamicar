@@ -19,6 +19,7 @@ import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getEvidencePoliciesForCustomerType, getWorkOrder, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
 import { EVIDENCE_LOCKED_STATUSES } from "@/lib/evidence";
+import { fmtMileage } from "@/lib/format";
 import { FrappeApiError } from "@/lib/frappe/client";
 
 const moneyFmt = new Intl.NumberFormat("es-AR", {
@@ -83,7 +84,7 @@ export default async function WorkOrderDetailPage({
       <Topbar>
         <Breadcrumbs
           items={[
-            { label: "Órdenes de Trabajo", href: "/work-orders" },
+            { label: "Operaciones", href: `/operaciones?ot=${encodeURIComponent(id)}` },
             { label: id },
           ]}
         />
@@ -141,7 +142,7 @@ export default async function WorkOrderDetailPage({
                   <Field label="Marca / Modelo" value={wo.vehicle_brand_model} />
                   <Field label="Año" value={wo.vehicle_year} />
                   <Field label="Color" value={wo.vehicle_color} />
-                  <Field label="Kilometraje" value={wo.vehicle_mileage} />
+                  <Field label="Kilometraje" value={fmtMileage(wo.vehicle_mileage)} />
                 </CardContent>
               </Card>
 
