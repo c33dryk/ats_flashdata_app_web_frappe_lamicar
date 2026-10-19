@@ -32,7 +32,7 @@ function StatCard({
       size="sm"
       className={cn(
         href && "cursor-pointer transition-colors hover:bg-muted/50",
-        active && "ring-2 ring-brand"
+        active && "ring-2 ring-foreground/60"
       )}
     >
       <CardHeader className="pb-0">

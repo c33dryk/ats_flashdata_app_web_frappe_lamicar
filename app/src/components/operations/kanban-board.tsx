@@ -192,7 +192,7 @@ export function KanbanBoard({
         </div>
         <DragOverlay dropAnimation={null}>
           {dragging && (
-            <div className="rotate-1 rounded-lg bg-card p-3 shadow-lg ring-2 ring-brand">
+            <div className="rotate-1 rounded-lg bg-card p-3 shadow-lg ring-1 ring-foreground/20">
               <CardBody wo={dragging} catalogs={catalogs} />
             </div>
           )}

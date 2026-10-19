@@ -9,6 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import { createWorkOrderAction, type CreateWorkOrderState } from "@/app/work-orders/actions";
+import { getClientAction } from "@/app/clientes/actions";
+import { ClientPicker } from "@/components/clients/client-picker";
+import { VehiclePicker } from "@/components/clients/vehicle-picker";
+import type { WoClient, WoVehicle } from "@/lib/clients-shared";
 import type {
   WoBranch,
   WoCustomerType,
@@ -29,6 +33,7 @@ export function NewWorkOrderForm({
   serviceTypes,
   operators,
   branches = [],
+  canViewTaxId = false,
   onCreated,
   onCancel,
 }: {
@@ -39,6 +44,8 @@ export function NewWorkOrderForm({
   operators: WoOperator[];
   /** Sucursales activas: si hay al menos una, elegir sucursal es obligatorio. */
   branches?: WoBranch[];
+  /** Mostrar/editar CUIT-DNI en el alta rápida de cliente (can(role, "viewTaxId")). */
+  canViewTaxId?: boolean;
   /** Si se pasa, el form se queda en la pantalla (modal) y avisa la OT creada en vez de navegar. */
   onCreated?: (name: string) => void;
   /** Si se pasa, "Cancelar" llama esto (cerrar modal) en vez de volver a /work-orders. */
@@ -46,6 +53,29 @@ export function NewWorkOrderForm({
 }) {
   const [state, formAction, pending] = useActionState(createWorkOrderAction, initialState);
   const [segment, setSegment] = useState<string>("");
+  const [client, setClient] = useState<WoClient | null>(null);
+  const [vehicle, setVehicle] = useState<WoVehicle | null>(null);
+  // Dueño de la unidad elegida: se ofrece como cliente de la OT (no se asigna solo — en un
+  // siniestro el cliente es la aseguradora, no el dueño).
+  const [vehicleOwner, setVehicleOwner] = useState<WoClient | null>(null);
+
+  const customerTypeOptions = useMemo(
+    () => customerTypes.map((c) => ({ key: c.name, label: c.customer_type_name })),
+    [customerTypes]
+  );
+  const vehicleTypeOptions = useMemo(
+    () => vehicleTypes.map((v) => ({ key: v.name, label: v.vehicle_type_name })),
+    [vehicleTypes]
+  );
+
+  async function selectVehicle(v: WoVehicle | null) {
+    setVehicle(v);
+    setVehicleOwner(null);
+    if (v?.client_id && v.client_id !== client?.name) {
+      const res = await getClientAction(v.client_id);
+      if (res.ok) setVehicleOwner(res.data);
+    }
+  }
 
   // Avisar una sola vez por cada OT creada (state cambia de identidad en cada submit). El modal
   // desmonta el form al cerrarse, así que no hace falta limpiar los campos acá.
@@ -60,7 +90,7 @@ export function NewWorkOrderForm({
   );
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="@container space-y-4">
       {onCreated && <input type="hidden" name="stay" value="1" />}
       {state.error && (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -68,44 +98,29 @@ export function NewWorkOrderForm({
         </p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 @3xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Cliente</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="customer_type_id">Tipo de cliente *</Label>
-              <select
-                id="customer_type_id"
-                name="customer_type_id"
-                required
-                defaultValue=""
-                className={selectClassName}
+          <CardContent className="space-y-3">
+            <input type="hidden" name="client_id" value={client?.name ?? ""} />
+            <ClientPicker
+              value={client}
+              onChange={setClient}
+              customerTypes={customerTypeOptions}
+              canViewTaxId={canViewTaxId}
+            />
+            {!client && vehicleOwner && (
+              <button
+                type="button"
+                onClick={() => setClient(vehicleOwner)}
+                className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
-                <option value="" disabled>
-                  Seleccionar...
-                </option>
-                {customerTypes.map((ct) => (
-                  <option key={ct.name} value={ct.name}>
-                    {ct.customer_type_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="customer_name">Nombre *</Label>
-              <Input id="customer_name" name="customer_name" required />
-            </div>
+                Usar el dueño de la unidad ({vehicleOwner.client_name})
+              </button>
+            )}
             <div className="space-y-1">
-              <Label htmlFor="customer_phone">Teléfono</Label>
-              <Input id="customer_phone" name="customer_phone" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="customer_email">Email</Label>
-              <Input id="customer_email" name="customer_email" type="email" />
-            </div>
-            <div className="col-span-2 space-y-1">
               <Label htmlFor="siniestro">Nº Siniestro</Label>
               <Input id="siniestro" name="siniestro" />
             </div>
@@ -116,47 +131,24 @@ export function NewWorkOrderForm({
           <CardHeader>
             <CardTitle>Vehículo</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="vehicle_type_id">Categoría</Label>
-              <select
-                id="vehicle_type_id"
-                name="vehicle_type_id"
-                defaultValue=""
-                className={selectClassName}
-              >
-                <option value="">Sin especificar</option>
-                {vehicleTypes.map((vt) => (
-                  <option key={vt.name} value={vt.name}>
-                    {vt.vehicle_type_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <CardContent className="space-y-3">
+            <input type="hidden" name="vehicle_id" value={vehicle?.name ?? ""} />
+            <VehiclePicker
+              value={vehicle}
+              onChange={selectVehicle}
+              vehicleTypes={vehicleTypeOptions}
+              customerTypes={customerTypeOptions}
+              canViewTaxId={canViewTaxId}
+              suggestedOwner={client}
+            />
             <div className="space-y-1">
-              <Label htmlFor="license_plate">Patente *</Label>
-              <Input id="license_plate" name="license_plate" required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_brand_model">Marca / Modelo</Label>
-              <Input id="vehicle_brand_model" name="vehicle_brand_model" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_year">Año</Label>
-              <Input id="vehicle_year" name="vehicle_year" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_color">Color</Label>
-              <Input id="vehicle_color" name="vehicle_color" />
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="vehicle_mileage">Kilometraje</Label>
-              <Input id="vehicle_mileage" name="vehicle_mileage" />
+              <Label htmlFor="vehicle_mileage">Kilometraje al ingreso</Label>
+              <Input id="vehicle_mileage" name="vehicle_mileage" inputMode="numeric" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="@3xl:col-span-2">
           <CardHeader>
             <CardTitle>Servicio</CardTitle>
           </CardHeader>
@@ -232,7 +224,7 @@ export function NewWorkOrderForm({
         </Card>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="sticky bottom-0 flex items-center gap-2 border-t border-border bg-card py-3">
         <Button type="submit" disabled={pending}>
           {pending ? "Creando..." : "Crear Orden"}
         </Button>

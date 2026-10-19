@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { LayoutList, Plus, Search, SquareKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { SidePanel } from "@/components/ui/side-panel";
 import { toast } from "@/components/ui/toast";
 import { NewWorkOrderForm } from "@/components/work-orders/new-work-order-form";
 import { KanbanBoard } from "./kanban-board";
@@ -26,6 +26,7 @@ import { labelOf, orderValue, type DashboardCatalogs } from "@/lib/dashboard-met
 import { fmtMoney } from "@/lib/format";
 import { isInGroup, resolveOperationsFilter } from "@/lib/work-order-status";
 import { cn } from "@/lib/utils";
+import { can } from "@/lib/permissions";
 import type { AppRole } from "@/lib/auth-shared";
 import {
   WORK_ORDER_STATUSES,
@@ -167,7 +168,6 @@ export function OperationsBoard({
               onClick={() => toggleFilter(k.filter)}
               className={cn(
                 "flex flex-col gap-1 rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-foreground/10 transition-all outline-none hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/50",
-                k.hero && "ring-2 ring-brand hover:ring-brand",
                 selected && "bg-foreground text-background ring-2 ring-foreground hover:ring-foreground"
               )}
             >
@@ -387,30 +387,28 @@ export function OperationsBoard({
         />
       )}
 
-      {newOrderCatalogs && (
-        <Modal
-          open={creating}
-          onClose={() => setCreating(false)}
-          title="Nueva orden de trabajo"
-          className="max-w-5xl"
-        >
-          <NewWorkOrderForm
-            {...newOrderCatalogs}
-            onCancel={() => setCreating(false)}
-            onCreated={(name) => {
-              setCreating(false);
-              toast.add({
-                title: `${name} creada`,
-                description: "Ya aparece en la lista y en la columna Nueva.",
-                type: "success",
-                actionProps: {
-                  children: "Abrir",
-                  onClick: () => openOrder(name),
-                },
-              });
-            }}
-          />
-        </Modal>
+      {newOrderCatalogs && creating && (
+        <SidePanel section="Operaciones" title="Nueva orden de trabajo" onClose={() => setCreating(false)}>
+          <div className="px-4 pt-4 sm:px-6">
+            <NewWorkOrderForm
+              {...newOrderCatalogs}
+              canViewTaxId={can(role, "viewTaxId")}
+              onCancel={() => setCreating(false)}
+              onCreated={(name) => {
+                setCreating(false);
+                toast.add({
+                  title: `${name} creada`,
+                  description: "Ya aparece en la lista y en la columna Nueva.",
+                  type: "success",
+                  actionProps: {
+                    children: "Abrir",
+                    onClick: () => openOrder(name),
+                  },
+                });
+              }}
+            />
+          </div>
+        </SidePanel>
       )}
     </div>
   );

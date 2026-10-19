@@ -9,6 +9,8 @@ export type FrappeFilters = Array<[string, string, unknown]>;
 export interface GetListOptions {
   fields?: string[];
   filters?: FrappeFilters;
+  /** Condiciones unidas por OR (ej. buscar por nombre o por CUIT). Se combinan con `filters` por AND. */
+  orFilters?: FrappeFilters;
   limit?: number;
   orderBy?: string;
 }
@@ -28,6 +30,7 @@ export async function getList<T = Record<string, unknown>>(
   const params = new URLSearchParams();
   if (options.fields) params.set("fields", JSON.stringify(options.fields));
   if (options.filters) params.set("filters", JSON.stringify(options.filters));
+  if (options.orFilters) params.set("or_filters", JSON.stringify(options.orFilters));
   // Sin limit, Frappe devuelve solo 20 filas. limit: 0 = sin tope (todas).
   if (options.limit !== undefined) params.set("limit_page_length", String(options.limit));
   if (options.orderBy) params.set("order_by", options.orderBy);

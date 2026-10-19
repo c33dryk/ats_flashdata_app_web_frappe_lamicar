@@ -162,6 +162,21 @@ relevante ahí, para no tener que releerlo de nuevo:
     sucursal inactiva). Propiedad en el panel, filtro en Operaciones y en Dashboard › Gestión
     (+ desglose por sucursal). Todo se oculta mientras no haya sucursales cargadas. Estado de los
     demás cambios de Frappe: `schema/CAMBIOS_FRAPPE.md`.
+23. **Clientes y Unidades** (`WO Client` CLI-#####, `WO Vehicle` nombre = patente normalizada):
+    ABM en `/clientes` y `/unidades` (admin, recepción, facturador), lógica server-side en
+    `app/clientes/actions.ts` (permisos, no duplicar CUIT/patente, CUIT oculto para técnico y
+    auditor — `can(role, "viewTaxId")`). Alta de OT: cliente y unidad se eligen con
+    autocompletar (`components/clients/*-picker.tsx`, buscan por nombre/CUIT/teléfono y por
+    patente) con **alta rápida inline** si no existen; el server copia sus datos en la OT
+    (`customer_*`, `vehicle_*` = foto histórica) y guarda `client_id`/`vehicle_id`. El dueño de
+    la unidad no se fuerza como cliente de la OT (en siniestros el cliente es la aseguradora).
+24. **Menú por áreas** (Operación / Clientes / Administración / Sistema), filtrado por
+    `SCREEN_ACCESS`. Técnico: Dashboard + Operaciones. Facturación y Remitos: todos menos el
+    técnico. "Órdenes de Trabajo" salió del menú (la página completa de cada OT sigue).
+25. **Patrón único: panel lateral** (`components/ui/side-panel.tsx`) para ver/crear/editar sin
+    salir de la pantalla: OT, Nueva Orden, clientes, unidades. En el celular ocupa la pantalla.
+    `Modal` queda solo para confirmaciones chicas (motivo de pendiente, visor de fotos). Sin
+    contornos verdes en tarjetas (el verde de marca solo marca destino al arrastrar en el kanban).
 19. **Logo Lamicar** (`public/lamicar-logo.png`, recortado del original de lamicar.ar): sidebar,
     topbar en mobile y login; en fondos oscuros va sobre pastilla blanca (el azul no contrasta).
 
@@ -218,6 +233,11 @@ relevante ahí, para no tener que releerlo de nuevo:
   texto con extensión .pdf / fichas con links): hay que construirlos de verdad, no portarlos.
 - **`getList` sin `limit` → Frappe devuelve solo 20 filas.** Los catálogos y el ABM venían
   truncados en silencio. `limit: 0` = todas (ya aplicado a catálogos, ABM y dashboard).
+- **No correr `npm run build` con el `npm run dev` del usuario prendido**: pisa la caché de
+  compilación y el dev server sigue sirviendo componentes viejos (pasó con el sidebar). Para
+  validar, usar `tsc --noEmit` + `eslint` y probar contra el dev server.
+- **`next start` lanzado en background no muere con TaskStop** (queda el proceso hijo de node
+  escuchando el puerto): cerrarlo por puerto (`Get-NetTCPConnection -LocalPort ...`).
 - **Actualizar `next` con `npm run dev` corriendo deja el dev server en 500** (hasta `/login`):
   queda el binario viejo en memoria con `node_modules` nuevos. Reiniciar `npm run dev`.
 

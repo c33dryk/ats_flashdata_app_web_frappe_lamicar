@@ -57,6 +57,7 @@ export default async function NewWorkOrderPage() {
               serviceTypes={catalogs.serviceTypes}
               operators={catalogs.operators}
               branches={catalogs.branches}
+              canViewTaxId={can(session.role, "viewTaxId")}
             />
           )
         )}

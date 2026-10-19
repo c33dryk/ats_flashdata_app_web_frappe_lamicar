@@ -59,11 +59,13 @@ export interface WorkOrder {
   status: WorkOrderStatus;
   siniestro?: string;
 
+  client_id?: string; // Link -> WO Client (maestro); customer_* quedan como copia histórica
   customer_type_id: string;
   customer_name: string;
   customer_phone?: string;
   customer_email?: string;
 
+  vehicle_id?: string; // Link -> WO Vehicle (patente); vehicle_* quedan como copia histórica
   vehicle_type_id?: string;
   license_plate: string;
   vehicle_brand_model?: string;
@@ -231,6 +233,8 @@ export type DashboardWorkOrder = Pick<
   | "service_type_id"
   | "assigned_operator_id"
   | "branch_id"
+  | "client_id"
+  | "vehicle_id"
   | "description"
   | "total_net"
   | "invoice_amount"
@@ -254,6 +258,8 @@ export function getDashboardWorkOrders() {
       "service_type_id",
       "assigned_operator_id",
       "branch_id",
+      "client_id",
+      "vehicle_id",
       "description",
       "total_net",
       "invoice_amount",
@@ -383,14 +389,6 @@ export function getBranches() {
     fields: ["name", "code", "branch_name", "address", "city", "phone", "email", "is_active"],
     filters: [["is_active", "=", 1]],
     orderBy: "branch_name asc",
-  });
-}
-
-export function getEvidencePolicies() {
-  return getList<WoEvidencePolicy>("WO Evidence Policy", {
-    limit: 0,
-    fields: ["name", "code", "policy_name", "customer_type_id", "is_active"],
-    filters: [["is_active", "=", 1]],
   });
 }
 

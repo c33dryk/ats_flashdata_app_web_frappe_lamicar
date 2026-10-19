@@ -6,7 +6,8 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  ClipboardList,
+  Users,
+  Car,
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
@@ -47,13 +48,29 @@ function initialsOf(name: string): string {
 
 // Cada rol ve solo las pantallas que habilita SCREEN_ACCESS (lib/permissions.ts) — el filtro se
 // aplica más abajo con canAccessPath, el mismo chequeo que hace proxy.ts.
-const navPrincipal = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/operaciones", label: "Operaciones", icon: SquareKanban },
-  // Versión anterior del listado — se mantiene hasta validar /operaciones.
-  { href: "/work-orders", label: "Órdenes de Trabajo", icon: ClipboardList },
-  { href: "/facturacion", label: "Facturación", icon: Receipt },
-  { href: "/remitos", label: "Remitos", icon: FileSignature },
+// Menú por áreas. Cada ítem se muestra solo si el rol puede abrir la ruta (SCREEN_ACCESS) y una
+// sección sin ítems visibles no se muestra. /work-orders ya no está en el menú (lo reemplaza
+// Operaciones), pero la página completa de cada OT sigue existiendo y se abre desde el panel.
+const navSections: Array<{
+  title?: string;
+  items: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
+}> = [
+  { items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] },
+  { title: "Operación", items: [{ href: "/operaciones", label: "Operaciones", icon: SquareKanban }] },
+  {
+    title: "Clientes",
+    items: [
+      { href: "/clientes", label: "Clientes", icon: Users },
+      { href: "/unidades", label: "Unidades", icon: Car },
+    ],
+  },
+  {
+    title: "Administración",
+    items: [
+      { href: "/facturacion", label: "Facturación", icon: Receipt },
+      { href: "/remitos", label: "Remitos", icon: FileSignature },
+    ],
+  },
 ];
 
 // Links solo-admin del proyecto (gateado por canAccessPath más abajo, y por proxy.ts para
@@ -186,26 +203,35 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden px-2.5 py-4">
-          <div className="flex flex-col gap-1">
-            {navPrincipal
-              .filter((item) => session && canAccessPath(session.role, item.href))
-              .map((item) => (
-                <NavLink
-                  key={item.href}
-                  {...item}
-                  active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
-                  collapsed={collapsed}
-                />
-              ))}
-          </div>
+        <nav className="flex flex-1 flex-col gap-5 overflow-y-auto overflow-x-hidden px-2.5 py-4">
+          {navSections.map((section, i) => {
+            const items = section.items.filter((item) => session && canAccessPath(session.role, item.href));
+            if (items.length === 0) return null;
+            return (
+              <div key={section.title ?? i} className="flex flex-col gap-1">
+                {section.title && !collapsed && (
+                  <p className="px-2.5 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground/70 uppercase">
+                    {section.title}
+                  </p>
+                )}
+                {items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    {...item}
+                    active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                    collapsed={collapsed}
+                  />
+                ))}
+              </div>
+            );
+          })}
 
           {session && navAdmin.some((g) => canAccessPath(session.role, g.basePath)) && (
             <div className="flex flex-col gap-1">
               {!collapsed && (
                 <p className="flex items-center gap-1.5 px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
                   <ShieldCheck className="h-3 w-3" />
-                  Administración
+                  Sistema
                 </p>
               )}
               {navAdmin.map((group) => {

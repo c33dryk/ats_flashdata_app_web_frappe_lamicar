@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Building2,
   Calendar,
   Car,
-  ChevronRight,
   CircleDollarSign,
   ClipboardList,
   ExternalLink,
@@ -20,10 +19,10 @@ import {
   Receipt,
   User,
   Wrench,
-  X,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { segmentedGroupClass, segmentedItemClass } from "@/components/ui/segmented";
+import { SidePanel } from "@/components/ui/side-panel";
 import { toast } from "@/components/ui/toast";
 import { EvidenceChecklist } from "@/components/work-orders/evidence-checklist";
 import { StatusBadge } from "@/components/work-orders/status-badge";
@@ -36,7 +35,7 @@ import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/auth-shared";
 import type { WoEvidencePolicy, WorkOrder, WorkOrderStatus } from "@/lib/frappe/work-orders";
 
-// Panel lateral de una OT (estilo "task panel" de ClickUp): barra superior con ruta y accesos,
+// Panel lateral de una OT (estilo "task panel" de ClickUp, sobre el marco común SidePanel):
 // estado + avance del flujo, propiedades en filas con ícono, pestañas (Fotos y archivos /
 // Trabajos / Actividad) y las acciones de estado fijas abajo. En el celular ocupa la pantalla.
 //
@@ -95,7 +94,6 @@ export function WorkOrderPanel({
   const [data, setData] = useState<PanelData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("files");
-  const panelRef = useRef<HTMLElement>(null);
 
   // Cada incremento vuelve a pedir la OT (tras una transición, un borrado o un conflicto).
   const [reloadTick, setReloadTick] = useState(0);
@@ -113,16 +111,6 @@ export function WorkOrderPanel({
     };
   }, [name, reloadTick]);
 
-  // Foco al panel al abrir; Esc cierra (salvo que haya un modal abierto encima).
-  useEffect(() => {
-    panelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !document.querySelector("dialog[open]")) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const wo = data?.workOrder;
 
   async function copyLink() {
@@ -137,24 +125,15 @@ export function WorkOrderPanel({
     }
   }
 
+  const canEditOrder = !!wo && can(role, "editOrder") && !EVIDENCE_LOCKED_STATUSES.includes(wo.status);
+
   return (
-    <>
-      {/* Fondo atenuado (escritorio): marca que se está trabajando en el panel; clic afuera cierra. */}
-      <div className="fixed inset-0 z-40 hidden bg-black/25 sm:block dark:bg-black/40" onClick={onClose} aria-hidden="true" />
-      <aside
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-label={`Orden ${name}`}
-        className="fixed inset-0 z-50 flex flex-col bg-card shadow-2xl outline-none sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[min(720px,100vw)] sm:border-l sm:border-border"
-      >
-        {/* Barra superior: misma altura que el Topbar de la app (h-14) para que las líneas coincidan */}
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3">
-          <nav className="flex min-w-0 flex-1 items-center gap-1 text-sm text-muted-foreground" aria-label="Ruta">
-            <span className="hidden sm:inline">{section}</span>
-            <ChevronRight className="hidden size-3.5 sm:inline" />
-            <span className="truncate font-medium text-foreground">{name}</span>
-          </nav>
+    <SidePanel
+      section={section}
+      title={name}
+      onClose={onClose}
+      actions={
+        <>
           <Button type="button" variant="ghost" size="icon-sm" onClick={copyLink} title="Copiar link" aria-label="Copiar link">
             <Link2 className="size-4" />
           </Button>
@@ -168,176 +147,169 @@ export function WorkOrderPanel({
               <ExternalLink className="size-4" />
             </Link>
           )}
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} title="Cerrar (Esc)" aria-label="Cerrar">
-            <X className="size-4" />
-          </Button>
-        </div>
-
-        {!wo ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-            {error ? (
-              <div className="space-y-3 text-center">
-                <p className="text-destructive">{error}</p>
-                <Button type="button" variant="outline" size="sm" onClick={() => load()}>
-                  Reintentar
-                </Button>
-              </div>
-            ) : (
-              <Loader2 className="size-6 animate-spin" aria-label="Cargando" />
+        </>
+      }
+      footer={
+        wo && (
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <WorkOrderActions
+                key={wo.modified}
+                workOrder={wo}
+                role={role}
+                initialPanel={initialAction}
+                onSuccess={() => load()}
+              />
+            </div>
+            {canEditOrder && (
+              <Link href={`/work-orders/${wo.name}/edit`} className={buttonVariants({ variant: "outline" })}>
+                <Pencil className="size-4" /> Editar
+              </Link>
             )}
           </div>
-        ) : (
-          <>
-            <div className="flex-1 overflow-y-auto">
-              <div className="space-y-5 px-4 py-4 sm:px-6">
-                {/* Encabezado */}
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold tracking-tight">{wo.name}</h2>
-                    <StatusBadge status={wo.status} />
-                    {wo.siniestro && (
-                      <span className="text-xs text-muted-foreground">Siniestro {wo.siniestro}</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {wo.customer_name} · <span className="font-mono">{wo.license_plate}</span>
-                    {wo.vehicle_brand_model && ` · ${wo.vehicle_brand_model}`}
-                  </p>
-                  <FlowStepper status={wo.status} />
-                </div>
+        )
+      }
+    >
+      {!wo ? (
+        <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+          {error ? (
+            <div className="space-y-3 text-center">
+              <p className="text-destructive">{error}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => load()}>
+                Reintentar
+              </Button>
+            </div>
+          ) : (
+            <Loader2 className="size-6 animate-spin" aria-label="Cargando" />
+          )}
+        </div>
+      ) : (
+        <div className="space-y-5 px-4 py-4 sm:px-6">
+          {/* Encabezado */}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-semibold tracking-tight">{wo.name}</h2>
+              <StatusBadge status={wo.status} />
+              {wo.siniestro && (
+                <span className="text-xs text-muted-foreground">Siniestro {wo.siniestro}</span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {wo.customer_name} · <span className="font-mono">{wo.license_plate}</span>
+              {wo.vehicle_brand_model && ` · ${wo.vehicle_brand_model}`}
+            </p>
+            <FlowStepper status={wo.status} />
+          </div>
 
-                {wo.status === "Pendiente" && wo.pending_reason && (
-                  <p className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
-                    <strong>En espera:</strong> {wo.pending_reason}
-                  </p>
-                )}
+          {wo.status === "Pendiente" && wo.pending_reason && (
+            <p className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+              <strong>En espera:</strong> {wo.pending_reason}
+            </p>
+          )}
 
-                {/* Propiedades (filas con ícono, estilo ClickUp) */}
-                <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-                  {catalogs.branches.length > 0 && (
-                  <Prop icon={Building2} label="Sucursal" value={labelOf(catalogs.branches, wo.branch_id) ?? "—"} />
-                )}
-                <Prop icon={Wrench} label="Técnico" value={labelOf(catalogs.operators, wo.assigned_operator_id) ?? "Sin asignar"} />
-                  <Prop
-                    icon={ClipboardList}
-                    label="Servicio"
-                    value={[labelOf(catalogs.segments, wo.service_segment_id), labelOf(catalogs.services, wo.service_type_id)]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  />
-                  <Prop
-                    icon={User}
-                    label="Cliente"
-                    value={`${wo.customer_name}${labelOf(catalogs.customerTypes, wo.customer_type_id) ? ` (${labelOf(catalogs.customerTypes, wo.customer_type_id)})` : ""}`}
-                  />
-                  <Prop
-                    icon={Phone}
-                    label="Teléfono"
-                    value={wo.customer_phone ? <a href={`tel:${wo.customer_phone}`} className="hover:underline">{wo.customer_phone}</a> : "—"}
-                  />
-                  <Prop
-                    icon={Mail}
-                    label="Email"
-                    value={wo.customer_email ? <a href={`mailto:${wo.customer_email}`} className="hover:underline">{wo.customer_email}</a> : "—"}
-                  />
-                  <Prop
-                    icon={Car}
-                    label="Vehículo"
-                    value={[
-                      labelOf(catalogs.vehicleTypes, wo.vehicle_type_id),
-                      wo.vehicle_year,
-                      wo.vehicle_color,
-                      fmtMileage(wo.vehicle_mileage),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "—"}
-                  />
-                  <Prop icon={CircleDollarSign} label="Total neto" value={fmtMoney(wo.total_net || 0)} />
-                  <Prop icon={Calendar} label="Alta" value={fmtDateTime(wo.creation)} />
-                  {(wo.delivery_signed_at || wo.delivery_date) && (
-                    <Prop
-                      icon={Hash}
-                      label="Entrega"
-                      value={`${fmtDate(wo.delivery_date)}${wo.delivery_signed_by ? ` · firmó ${wo.delivery_signed_by}` : ""}`}
-                    />
-                  )}
-                  {wo.invoice_number && (
-                    <Prop
-                      icon={Receipt}
-                      label="Factura"
-                      value={`${wo.invoice_number} · ${fmtDate(wo.invoice_date)} · ${fmtMoney(wo.invoice_amount || 0)}`}
-                    />
-                  )}
-                </dl>
+          {/* Propiedades (filas con ícono, estilo ClickUp) */}
+          <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {catalogs.branches.length > 0 && (
+              <Prop icon={Building2} label="Sucursal" value={labelOf(catalogs.branches, wo.branch_id) ?? "—"} />
+            )}
+            <Prop icon={Wrench} label="Técnico" value={labelOf(catalogs.operators, wo.assigned_operator_id) ?? "Sin asignar"} />
+            <Prop
+              icon={ClipboardList}
+              label="Servicio"
+              value={[labelOf(catalogs.segments, wo.service_segment_id), labelOf(catalogs.services, wo.service_type_id)]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            />
+            <Prop
+              icon={User}
+              label="Cliente"
+              value={`${wo.customer_name}${labelOf(catalogs.customerTypes, wo.customer_type_id) ? ` (${labelOf(catalogs.customerTypes, wo.customer_type_id)})` : ""}`}
+            />
+            <Prop
+              icon={Phone}
+              label="Teléfono"
+              value={wo.customer_phone ? <a href={`tel:${wo.customer_phone}`} className="hover:underline">{wo.customer_phone}</a> : "—"}
+            />
+            <Prop
+              icon={Mail}
+              label="Email"
+              value={wo.customer_email ? <a href={`mailto:${wo.customer_email}`} className="hover:underline">{wo.customer_email}</a> : "—"}
+            />
+            <Prop
+              icon={Car}
+              label="Vehículo"
+              value={[
+                labelOf(catalogs.vehicleTypes, wo.vehicle_type_id),
+                wo.vehicle_year,
+                wo.vehicle_color,
+                fmtMileage(wo.vehicle_mileage),
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            />
+            <Prop icon={CircleDollarSign} label="Total neto" value={fmtMoney(wo.total_net || 0)} />
+            <Prop icon={Calendar} label="Alta" value={fmtDateTime(wo.creation)} />
+            {(wo.delivery_signed_at || wo.delivery_date) && (
+              <Prop
+                icon={Hash}
+                label="Entrega"
+                value={`${fmtDate(wo.delivery_date)}${wo.delivery_signed_by ? ` · firmó ${wo.delivery_signed_by}` : ""}`}
+              />
+            )}
+            {wo.invoice_number && (
+              <Prop
+                icon={Receipt}
+                label="Factura"
+                value={`${wo.invoice_number} · ${fmtDate(wo.invoice_date)} · ${fmtMoney(wo.invoice_amount || 0)}`}
+              />
+            )}
+          </dl>
 
-                {wo.description && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Descripción</p>
-                    <p className="text-sm whitespace-pre-line">{wo.description}</p>
-                  </div>
-                )}
+          {wo.description && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Descripción</p>
+              <p className="text-sm whitespace-pre-line">{wo.description}</p>
+            </div>
+          )}
 
-                {/* Pestañas */}
-                <div className="space-y-4">
-                  <div className={cn(segmentedGroupClass, "w-full sm:w-auto")} role="tablist" aria-label="Secciones">
-                    {(
-                      [
-                        ["files", `Fotos y archivos ${filesBadge(wo, data!.policies)}`],
-                        ["items", `Trabajos (${wo.items?.length ?? 0})`],
-                        ["activity", `Actividad (${wo.events?.length ?? 0})`],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        role="tab"
-                        aria-selected={tab === key}
-                        onClick={() => setTab(key)}
-                        className={cn(segmentedItemClass(tab === key), "flex-1 sm:flex-none")}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {tab === "files" && (
-                    <EvidenceChecklist
-                      workOrder={wo}
-                      policies={data!.policies}
-                      canEdit={can(role, "uploadEvidence") && !EVIDENCE_LOCKED_STATUSES.includes(wo.status)}
-                      onChange={(updated) => setData((d) => (d ? { ...d, workOrder: updated } : d))}
-                      onReload={() => load()}
-                    />
-                  )}
-                  {tab === "items" && <ItemsTab wo={wo} />}
-                  {tab === "activity" && <ActivityTab wo={wo} />}
-                </div>
-              </div>
+          {/* Pestañas */}
+          <div className="space-y-4">
+            <div className={cn(segmentedGroupClass, "w-full sm:w-auto")} role="tablist" aria-label="Secciones">
+              {(
+                [
+                  ["files", `Fotos y archivos ${filesBadge(wo, data!.policies)}`],
+                  ["items", `Trabajos (${wo.items?.length ?? 0})`],
+                  ["activity", `Actividad (${wo.events?.length ?? 0})`],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(key)}
+                  className={cn(segmentedItemClass(tab === key), "flex-1 sm:flex-none")}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
-            {/* Acciones fijas abajo (al alcance del pulgar en el celular) */}
-            <div className="max-h-[60dvh] shrink-0 overflow-y-auto border-t border-border bg-card px-4 py-3 sm:px-6">
-              <div className="flex flex-wrap items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <WorkOrderActions
-                    key={wo.modified}
-                    workOrder={wo}
-                    role={role}
-                    initialPanel={initialAction}
-                    onSuccess={() => load()}
-                  />
-                </div>
-                {can(role, "editOrder") && !EVIDENCE_LOCKED_STATUSES.includes(wo.status) && (
-                  <Link href={`/work-orders/${wo.name}/edit`} className={buttonVariants({ variant: "outline" })}>
-                    <Pencil className="size-4" /> Editar
-                  </Link>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </aside>
-    </>
+            {tab === "files" && (
+              <EvidenceChecklist
+                workOrder={wo}
+                policies={data!.policies}
+                canEdit={can(role, "uploadEvidence") && !EVIDENCE_LOCKED_STATUSES.includes(wo.status)}
+                onChange={(updated) => setData((d) => (d ? { ...d, workOrder: updated } : d))}
+                onReload={() => load()}
+              />
+            )}
+            {tab === "items" && <ItemsTab wo={wo} />}
+            {tab === "activity" && <ActivityTab wo={wo} />}
+          </div>
+        </div>
+      )}
+    </SidePanel>
   );
 }
 

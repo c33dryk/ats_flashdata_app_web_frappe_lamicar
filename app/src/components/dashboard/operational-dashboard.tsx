@@ -36,7 +36,6 @@ function StatTile({
   const className = cn(
     "flex flex-col gap-1 rounded-xl bg-card p-4 text-card-foreground ring-1 ring-foreground/10",
     href && "transition-all outline-none hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/50",
-    hero && "ring-2 ring-brand hover:ring-brand"
   );
   const content = (
     <>

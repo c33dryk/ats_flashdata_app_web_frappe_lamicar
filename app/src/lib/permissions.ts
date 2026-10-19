@@ -18,6 +18,12 @@ export const CAPABILITY_ROLES = {
   manageCatalogs: ["admin"],
   /** Descargar el expediente ZIP (fotos, firma, factura) de una o varias OTs. */
   exportDossier: ["admin", "facturador", "auditor"],
+  /** ABM de clientes y unidades (pantallas /clientes y /unidades). */
+  manageClients: ["admin", "recepcion", "facturador"],
+  /** Alta rápida de cliente/unidad desde el form de OT (= quien puede crear OTs, + ABM). */
+  quickCreateClients: ["admin", "recepcion", "facturador"],
+  /** Ver CUIT/DNI del cliente (en Frappe es permlevel 1: Admin, Recepción, Facturador). */
+  viewTaxId: ["admin", "recepcion", "facturador"],
 } satisfies Record<string, AppRole[]>;
 
 export type Capability = keyof typeof CAPABILITY_ROLES;
@@ -27,7 +33,8 @@ export function can(role: AppRole | undefined | null, capability: Capability): b
 }
 
 // ── Pantallas (qué ve cada rol en el menú y qué rutas puede abrir) ──────────────
-// Calcado del `screenAccess` del MVP. Pendiente de construir: Clientes y Flota (todos).
+// Calcado del `screenAccess` del MVP, ajustado con Lamicar: Facturación y Remitos son del área
+// administrativa (todos menos el técnico); Clientes/Unidades, de quien da de alta y factura.
 // "facturador" no ve el taller (Operaciones / Órdenes de Trabajo): factura y abre las OTs desde
 // /facturacion, que usa el mismo panel lateral.
 const SHOP_ROLES: AppRole[] = ["admin", "recepcion", "tecnico", "auditor"];
@@ -37,7 +44,9 @@ export const SCREEN_ACCESS: Array<{ prefix: string; roles: AppRole[] }> = [
   { prefix: "/operaciones", roles: SHOP_ROLES },
   { prefix: "/work-orders", roles: SHOP_ROLES },
   { prefix: "/facturacion", roles: ["admin", "facturador", "recepcion", "auditor"] },
-  { prefix: "/remitos", roles: ALL_ROLES },
+  { prefix: "/remitos", roles: ["admin", "facturador", "recepcion", "auditor"] },
+  { prefix: "/clientes", roles: ["admin", "recepcion", "facturador"] },
+  { prefix: "/unidades", roles: ["admin", "recepcion", "facturador"] },
   { prefix: "/admin", roles: ["admin"] },
 ];
 
