@@ -13,6 +13,7 @@ export function Modal({
   title,
   description,
   className,
+  fullScreen = false,
   children,
 }: {
   open: boolean;
@@ -20,6 +21,8 @@ export function Modal({
   title: string;
   description?: string;
   className?: string;
+  /** Ocupa toda la pantalla (ej. firmar la entrega); el contenido se estira al alto disponible. */
+  fullScreen?: boolean;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -45,12 +48,15 @@ export function Modal({
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-xl bg-background p-0 text-foreground shadow-xl ring-1 ring-foreground/10 backdrop:bg-black/50",
+        "overflow-hidden bg-background p-0 text-foreground backdrop:bg-black/50",
+        fullScreen
+          ? "m-0 h-dvh max-h-none w-screen max-w-none"
+          : "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg rounded-xl shadow-xl ring-1 ring-foreground/10",
         className
       )}
     >
       {open && (
-        <div className="flex max-h-[calc(100dvh-2rem)] flex-col">
+        <div className={cn("flex flex-col", fullScreen ? "h-full" : "max-h-[calc(100dvh-2rem)]")}>
           <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div>
               <h2 className="text-base font-semibold">{title}</h2>
@@ -65,7 +71,9 @@ export function Modal({
               <X className="size-4" />
             </button>
           </div>
-          <div className="overflow-y-auto px-5 py-4">{children}</div>
+          <div className={cn("px-5 py-4", fullScreen ? "flex min-h-0 flex-1 flex-col" : "overflow-y-auto")}>
+            {children}
+          </div>
         </div>
       )}
     </dialog>

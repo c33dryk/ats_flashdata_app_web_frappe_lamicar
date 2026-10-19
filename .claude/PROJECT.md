@@ -189,7 +189,13 @@ relevante ahí, para no tener que releerlo de nuevo:
     **Sucursal / taller** es el primer campo del alta y la edición (`BranchField`): siempre
     visible; si no hay sucursales lo avisa (admin: link a Configuración). **Km y año numéricos**:
     `parseMileage` / `parseVehicleYear` en `lib/format.ts` validan en el server (el campo en
-    Frappe es Data; se guarda solo con dígitos) y `fmtMileage` muestra "14.500 km". Sin
+    Frappe es Data; se guarda solo con dígitos) y `fmtMileage` muestra "14.500 km".
+26. **Celular / tablet**: indicadores con un solo componente (`components/ui/kpi-tile.tsx`,
+    Operaciones / Dashboard / Facturación): en el celular van los 4 en una línea, compactos y
+    con montos abreviados ($448 k). **Firma de entrega a pantalla completa** en todos los
+    dispositivos (`components/work-orders/signature-dialog.tsx`, `Modal fullScreen`): el lienzo
+    toma el tamaño real × densidad de píxeles (antes era 400×150 estirado y el trazo no caía bajo
+    el dedo), pointer events, y la imagen se achica a 1000px antes de mandarla (Server Action 1MB). Sin
     contornos verdes en tarjetas (el verde de marca solo marca destino al arrastrar en el kanban).
 19. **Logo Lamicar** (`public/lamicar-logo.png`, recortado del original de lamicar.ar): sidebar,
     topbar en mobile y login; en fondos oscuros va sobre pastilla blanca (el azul no contrasta).

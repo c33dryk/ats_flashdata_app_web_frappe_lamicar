@@ -15,6 +15,7 @@ import {
 } from "@/lib/frappe/work-orders";
 import type { AppRole } from "@/lib/auth-shared";
 import { compressImage } from "@/lib/image-compress";
+import { SignatureDialog } from "./signature-dialog";
 
 const COMMAND_LABELS: Record<WorkOrderCommand, string> = {
   start: "Iniciar",
@@ -155,7 +156,8 @@ export function WorkOrderActions({
       )}
 
       {activePanel === "deliver" && (
-        <DeliverPanel
+        <SignatureDialog
+          open
           defaultSignedBy={workOrder.customer_name}
           pending={pending}
           onCancel={() => setActivePanel(null)}
@@ -322,115 +324,6 @@ function InvoicePanel({
             {uploading ? "Subiendo PDF…" : "Confirmar"}
           </Button>
           <Button type="button" variant="outline" disabled={pending || uploading} onClick={onCancel}>
-            Cancelar
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DeliverPanel({
-  defaultSignedBy,
-  pending,
-  onConfirm,
-  onCancel,
-}: {
-  defaultSignedBy: string;
-  pending: boolean;
-  onConfirm: (fields: { signedBy: string; signatureDataUrl: string }) => void;
-  onCancel: () => void;
-}) {
-  const [signedBy, setSignedBy] = useState(defaultSignedBy);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawingRef = useRef(false);
-  const [hasSignature, setHasSignature] = useState(false);
-
-  function pos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
-    const rect = canvas.getBoundingClientRect();
-    const point = "touches" in e ? e.touches[0] : e;
-    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
-  }
-
-  function start(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const { x, y } = pos(e, canvas);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    drawingRef.current = true;
-  }
-
-  function move(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const { x, y } = pos(e, canvas);
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.strokeStyle = "#0f172a";
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    setHasSignature(true);
-  }
-
-  function stop() {
-    drawingRef.current = false;
-  }
-
-  function clear() {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasSignature(false);
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Entrega de Vehículo y Conformidad de Remito</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="space-y-1">
-          <Label htmlFor="signed_by">Firmado por *</Label>
-          <Input id="signed_by" value={signedBy} onChange={(e) => setSignedBy(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>Firma *</Label>
-          <canvas
-            ref={canvasRef}
-            width={400}
-            height={150}
-            className="w-full max-w-md touch-none rounded-md border border-input bg-white"
-            onMouseDown={start}
-            onMouseMove={move}
-            onMouseUp={stop}
-            onMouseLeave={stop}
-            onTouchStart={start}
-            onTouchMove={move}
-            onTouchEnd={stop}
-          />
-          <Button type="button" variant="outline" size="sm" onClick={clear}>
-            Borrar firma
-          </Button>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            disabled={pending || !signedBy.trim() || !hasSignature}
-            onClick={() =>
-              onConfirm({
-                signedBy: signedBy.trim(),
-                signatureDataUrl: canvasRef.current?.toDataURL("image/png") ?? "",
-              })
-            }
-          >
-            Confirmar Entrega
-          </Button>
-          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
             Cancelar
           </Button>
         </div>

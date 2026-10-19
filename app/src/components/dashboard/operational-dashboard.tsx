@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiGrid, KpiTile } from "@/components/ui/kpi-tile";
 import {
   Table,
   TableBody,
@@ -11,49 +12,12 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/work-orders/status-badge";
 import { computeOperationalStats, labelOf, type DashboardCatalogs } from "@/lib/dashboard-metrics";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtMoneyCompact } from "@/lib/format";
 import { isInGroup } from "@/lib/work-order-status";
-import { cn } from "@/lib/utils";
 import type { DashboardWorkOrder } from "@/lib/frappe/work-orders";
 
 const ACTIVE_TABLE_LIMIT = 8;
 
-// Cada indicador linkea a /operaciones ya filtrado (claves de OPERATIONS_FILTERS), si el rol
-// puede ver Operaciones; si no, es solo informativo.
-function StatTile({
-  label,
-  value,
-  sub,
-  hero,
-  href,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  hero?: boolean;
-  href?: string;
-}) {
-  const className = cn(
-    "flex flex-col gap-1 rounded-xl bg-card p-4 text-card-foreground ring-1 ring-foreground/10",
-    href && "transition-all outline-none hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/50",
-  );
-  const content = (
-    <>
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className={cn("font-semibold tracking-tight", hero ? "text-5xl leading-none" : "text-2xl")}>
-        {value}
-      </span>
-      <span className="text-xs text-muted-foreground">{sub}</span>
-    </>
-  );
-  return href ? (
-    <Link href={href} className={className}>
-      {content}
-    </Link>
-  ) : (
-    <div className={className}>{content}</div>
-  );
-}
 
 export function OperationalDashboard({
   rows,
@@ -78,33 +42,36 @@ export function OperationalDashboard({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile
+      {/* Cada indicador linkea a /operaciones ya filtrado (si el rol puede ver Operaciones). */}
+      <KpiGrid label="Indicadores">
+        <KpiTile
           hero
           href={tileHref("activas")}
           label="Órdenes activas en taller"
           value={String(stats.active)}
           sub={`${stats.inProgress} en curso · ${stats.pending} en espera`}
         />
-        <StatTile
+        <KpiTile
           href={tileHref("facturadas")}
           label="Facturación confirmada"
           value={fmtMoney(stats.invoicedAmount)}
+          compactValue={fmtMoneyCompact(stats.invoicedAmount)}
           sub={`${stats.invoicedCount} órdenes facturadas`}
         />
-        <StatTile
+        <KpiTile
           href={tileHref("no-facturadas")}
           label="Pipeline valorizado"
           value={fmtMoney(stats.pipelineValue)}
+          compactValue={fmtMoneyCompact(stats.pipelineValue)}
           sub="Valor aún no facturado (nuevas a entregadas)"
         />
-        <StatTile
+        <KpiTile
           href={tileHref("entregadas")}
           label="Entregas con remito"
           value={String(stats.deliveredCount)}
           sub="Entregadas con firma digital"
         />
-      </div>
+      </KpiGrid>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">

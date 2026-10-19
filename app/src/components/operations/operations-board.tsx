@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { LayoutList, Plus, Search, SquareKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/ui/side-panel";
+import { KpiGrid, KpiTile } from "@/components/ui/kpi-tile";
 import { toast } from "@/components/ui/toast";
 import { NewWorkOrderForm } from "@/components/work-orders/new-work-order-form";
 import { KanbanBoard } from "./kanban-board";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/work-orders/status-badge";
 import { labelOf, orderValue, type DashboardCatalogs } from "@/lib/dashboard-metrics";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtMoneyCompact } from "@/lib/format";
 import { isInGroup, resolveOperationsFilter } from "@/lib/work-order-status";
 import { cn } from "@/lib/utils";
 import { can } from "@/lib/permissions";
@@ -136,7 +137,17 @@ export function OperationsBoard({
   const countBy = (s: WorkOrderStatus) => rows.filter((w) => w.status === s).length;
   const hasFilters = !!(query.trim() || filter || segment || branch);
 
-  const indicators = [
+  const pipelineValue = rows
+    .filter((w) => isInGroup(w.status, "PIPELINE"))
+    .reduce((acc, w) => acc + orderValue(w), 0);
+  const indicators: Array<{
+    filter: string;
+    label: string;
+    value: string;
+    compactValue?: string;
+    sub: string;
+    hero?: boolean;
+  }> = [
     {
       filter: "activas",
       label: "Activas en taller",
@@ -159,9 +170,8 @@ export function OperationsBoard({
     {
       filter: "no-facturadas",
       label: "Valor en taller",
-      value: fmtMoney(
-        rows.filter((w) => isInGroup(w.status, "PIPELINE")).reduce((acc, w) => acc + orderValue(w), 0)
-      ),
+      value: fmtMoney(pipelineValue),
+      compactValue: fmtMoneyCompact(pipelineValue),
       sub: "Neto aún no facturado",
     },
   ];
@@ -169,33 +179,20 @@ export function OperationsBoard({
   return (
     <div className="space-y-4">
       {/* Indicadores: cada uno es un botón que filtra (segundo clic lo quita) */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" role="group" aria-label="Indicadores">
-        {indicators.map((k) => {
-          const selected = filter === k.filter;
-          return (
-            <button
-              key={k.filter}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => toggleFilter(k.filter)}
-              className={cn(
-                "flex flex-col gap-1 rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-foreground/10 transition-all outline-none hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/50",
-                selected && "bg-foreground text-background ring-2 ring-foreground hover:ring-foreground"
-              )}
-            >
-              <span className={cn("text-xs font-medium", selected ? "text-background/70" : "text-muted-foreground")}>
-                {k.label}
-              </span>
-              <span className={cn("font-semibold tracking-tight", k.hero ? "text-4xl leading-none" : "text-2xl")}>
-                {k.value}
-              </span>
-              <span className={cn("text-xs", selected ? "text-background/70" : "text-muted-foreground")}>
-                {selected ? "Filtrando · clic para quitar" : k.sub}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <KpiGrid label="Indicadores">
+        {indicators.map((k) => (
+          <KpiTile
+            key={k.filter}
+            label={k.label}
+            value={k.value}
+            compactValue={k.compactValue}
+            sub={k.sub}
+            hero={k.hero}
+            selected={filter === k.filter}
+            onClick={() => toggleFilter(k.filter)}
+          />
+        ))}
+      </KpiGrid>
 
       {/* Barra de controles */}
       <div className="flex flex-wrap items-center gap-2">

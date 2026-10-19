@@ -5,6 +5,7 @@ import { Download, FileText, PenLine, Receipt, Search } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { KpiGrid, KpiTile } from "@/components/ui/kpi-tile";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import {
   Table,
@@ -19,7 +20,7 @@ import { useOrderPanel } from "@/components/operations/use-order-panel";
 import { StatusBadge } from "@/components/work-orders/status-badge";
 import { labelOf, type DashboardCatalogs } from "@/lib/dashboard-metrics";
 import { fileHref } from "@/lib/evidence";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtMoneyCompact } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/auth-shared";
@@ -89,9 +90,21 @@ export function BillingBoard({
   const invoiced = rows.filter((w) => FILTERS.facturadas(w, month));
   const noPdf = rows.filter((w) => FILTERS["sin-pdf"](w, month));
 
-  const indicators: Array<{ key: Exclude<FilterKey, "">; label: string; value: string; sub: string }> = [
-    { key: "por-facturar", label: "Por facturar", value: fmtMoney(sum(pending)), sub: `${pending.length} entregadas` },
-    { key: "mes", label: "Facturado este mes", value: fmtMoney(sum(thisMonth)), sub: `${thisMonth.length} comprobantes` },
+  const indicators: Array<{ key: Exclude<FilterKey, "">; label: string; value: string; compactValue?: string; sub: string }> = [
+    {
+      key: "por-facturar",
+      label: "Por facturar",
+      value: fmtMoney(sum(pending)),
+      compactValue: fmtMoneyCompact(sum(pending)),
+      sub: `${pending.length} entregadas`,
+    },
+    {
+      key: "mes",
+      label: "Facturado este mes",
+      value: fmtMoney(sum(thisMonth)),
+      compactValue: fmtMoneyCompact(sum(thisMonth)),
+      sub: `${thisMonth.length} comprobantes`,
+    },
     { key: "facturadas", label: "Facturadas", value: String(invoiced.length), sub: fmtMoney(sum(invoiced)) },
     { key: "sin-pdf", label: "Facturadas sin PDF", value: String(noPdf.length), sub: "Falta adjuntar el comprobante" },
   ];
@@ -109,31 +122,19 @@ export function BillingBoard({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" role="group" aria-label="Indicadores">
-        {indicators.map((k) => {
-          const on = filter === k.key;
-          return (
-            <button
-              key={k.key}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setFilter(on ? "" : k.key)}
-              className={cn(
-                "flex flex-col gap-1 rounded-xl bg-card p-4 text-left text-card-foreground ring-1 ring-foreground/10 transition-all outline-none hover:ring-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/50",
-                on && "bg-foreground text-background ring-2 ring-foreground hover:ring-foreground"
-              )}
-            >
-              <span className={cn("text-xs font-medium", on ? "text-background/70" : "text-muted-foreground")}>
-                {k.label}
-              </span>
-              <span className="text-2xl font-semibold tracking-tight">{k.value}</span>
-              <span className={cn("text-xs", on ? "text-background/70" : "text-muted-foreground")}>
-                {on ? "Filtrando · clic para quitar" : k.sub}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <KpiGrid label="Indicadores">
+        {indicators.map((k) => (
+          <KpiTile
+            key={k.key}
+            label={k.label}
+            value={k.value}
+            compactValue={k.compactValue}
+            sub={k.sub}
+            selected={filter === k.key}
+            onClick={() => setFilter(filter === k.key ? "" : k.key)}
+          />
+        ))}
+      </KpiGrid>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
