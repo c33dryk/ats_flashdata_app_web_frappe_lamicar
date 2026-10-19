@@ -223,7 +223,12 @@ export function WorkOrderPanel({
             <Prop
               icon={User}
               label="Cliente"
-              value={`${wo.customer_name}${labelOf(catalogs.customerTypes, wo.customer_type_id) ? ` (${labelOf(catalogs.customerTypes, wo.customer_type_id)})` : ""}`}
+              value={
+                <MasterLink href={wo.client_id && canAccessPath(role, "/clientes") ? `/clientes?c=${encodeURIComponent(wo.client_id)}` : undefined}>
+                  {wo.customer_name}
+                  {labelOf(catalogs.customerTypes, wo.customer_type_id) && ` (${labelOf(catalogs.customerTypes, wo.customer_type_id)})`}
+                </MasterLink>
+              }
             />
             <Prop
               icon={Phone}
@@ -234,6 +239,16 @@ export function WorkOrderPanel({
               icon={Mail}
               label="Email"
               value={wo.customer_email ? <a href={`mailto:${wo.customer_email}`} className="hover:underline">{wo.customer_email}</a> : "—"}
+            />
+            <Prop
+              icon={Car}
+              label="Unidad"
+              value={
+                <MasterLink href={wo.vehicle_id && canAccessPath(role, "/unidades") ? `/unidades?u=${encodeURIComponent(wo.vehicle_id)}` : undefined}>
+                  {wo.license_plate}
+                  {wo.vehicle_brand_model && ` · ${wo.vehicle_brand_model}`}
+                </MasterLink>
+              }
             />
             <Prop
               icon={Car}
@@ -318,6 +333,17 @@ function filesBadge(wo: WorkOrder, policies: WoEvidencePolicy[]) {
   if (!reqs.length) return `(${wo.evidence?.length ?? 0})`;
   const met = reqs.filter((r) => requirementCount(wo, r) >= (r.min_photos ?? 1)).length;
   return `${met}/${reqs.length}`;
+}
+
+/** Valor de una propiedad que, si la OT está vinculada al maestro, linkea a su ficha. */
+function MasterLink({ href, children }: { href?: string; children: React.ReactNode }) {
+  return href ? (
+    <Link href={href} className="underline-offset-4 hover:underline">
+      {children}
+    </Link>
+  ) : (
+    <>{children}</>
+  );
 }
 
 function Prop({

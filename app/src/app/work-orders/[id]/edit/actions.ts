@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
+import { resolveOrderParties } from "@/lib/frappe/order-parties";
 import { getWorkOrder, updateWorkOrder, type WorkOrder, type WorkOrderItem } from "@/lib/frappe/work-orders";
 
 export interface EditWorkOrderState {
@@ -80,18 +81,18 @@ export async function updateWorkOrderAction(
   }
   const totalNet = Math.round(items.reduce((acc, it) => acc + (it.amount_net ?? 0), 0) * 100) / 100;
 
+  // Cliente / unidad: si se eligió alguno en el form, se vincula y se copian sus datos del maestro;
+  // lo no elegido queda como estaba (OTs viejas sin vincular siguen editables).
+  const parties = await resolveOrderParties({
+    clientId: str(formData, "client_id"),
+    vehicleId: str(formData, "vehicle_id"),
+  });
+  if (!parties.ok) return { error: parties.error, success: false };
+
   const payload: Partial<WorkOrder> = {
-    customer_type_id: str(formData, "customer_type_id"),
-    customer_name: str(formData, "customer_name"),
-    customer_phone: str(formData, "customer_phone"),
-    customer_email: str(formData, "customer_email"),
-    siniestro: str(formData, "siniestro"),
-    vehicle_type_id: str(formData, "vehicle_type_id"),
-    license_plate: str(formData, "license_plate"),
-    vehicle_brand_model: str(formData, "vehicle_brand_model"),
-    vehicle_year: str(formData, "vehicle_year"),
-    vehicle_color: str(formData, "vehicle_color"),
-    vehicle_mileage: str(formData, "vehicle_mileage"),
+    ...parties.data,
+    siniestro: str(formData, "siniestro") ?? "",
+    vehicle_mileage: str(formData, "vehicle_mileage") ?? "",
     service_segment_id: str(formData, "service_segment_id"),
     service_type_id: str(formData, "service_type_id"),
     assigned_operator_id: str(formData, "assigned_operator_id"),
@@ -101,13 +102,6 @@ export async function updateWorkOrderAction(
     items,
     total_net: totalNet,
   };
-
-  if (!payload.customer_type_id || !payload.customer_name || !payload.license_plate) {
-    return {
-      error: "Tipo de cliente, nombre del cliente y patente son obligatorios.",
-      success: false,
-    };
-  }
 
   try {
     await updateWorkOrder(orderId, payload);

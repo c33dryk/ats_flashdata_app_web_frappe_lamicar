@@ -3,11 +3,11 @@ import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { ClientsBoard } from "@/components/clients/clients-board";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canAccessPath } from "@/lib/permissions";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getClients, getVehicles } from "@/lib/frappe/clients";
 import { getCatalogOptions, getDashboardWorkOrders } from "@/lib/frappe/work-orders";
-import type { WoClient, WoVehicle } from "@/lib/clients-shared";
+import type { OrderRef, WoClient, WoVehicle } from "@/lib/clients-shared";
 import type { DashboardCatalogs } from "@/lib/dashboard-metrics";
 
 // ABM de clientes (WO Client). Acceso: SCREEN_ACCESS["/clientes"].
@@ -18,7 +18,7 @@ export default async function ClientesPage() {
 
   let clients: WoClient[] = [];
   let vehicles: WoVehicle[] = [];
-  let orderCounts: Record<string, number> = {};
+  let ordersByClient: Record<string, OrderRef[]> = {};
   let catalogs: DashboardCatalogs | null = null;
   let errorMessage: string | null = null;
 
@@ -28,8 +28,10 @@ export default async function ClientesPage() {
     clients = canViewTaxId ? c : c.map((x) => ({ ...x, tax_id: undefined }));
     vehicles = v;
     catalogs = cat;
-    orderCounts = orders.reduce<Record<string, number>>((acc, o) => {
-      if (o.client_id) acc[o.client_id] = (acc[o.client_id] ?? 0) + 1;
+    // Relación OT → cliente (Work Order.client_id). Las OTs vienen ordenadas por alta (más nuevas primero).
+    ordersByClient = orders.reduce<Record<string, OrderRef[]>>((acc, o) => {
+      if (o.client_id)
+        (acc[o.client_id] ??= []).push({ name: o.name, status: o.status, license_plate: o.license_plate, creation: o.creation });
       return acc;
     }, {});
   } catch (err) {
@@ -57,7 +59,8 @@ export default async function ClientesPage() {
           <ClientsBoard
             clients={clients}
             vehicles={vehicles}
-            orderCounts={orderCounts}
+            ordersByClient={ordersByClient}
+            orderBase={canAccessPath(session.role, "/operaciones") ? "/operaciones" : "/facturacion"}
             customerTypes={catalogs.customerTypes}
             canViewTaxId={canViewTaxId}
           />

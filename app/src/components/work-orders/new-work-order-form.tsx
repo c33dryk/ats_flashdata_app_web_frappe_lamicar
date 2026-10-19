@@ -4,15 +4,11 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import { createWorkOrderAction, type CreateWorkOrderState } from "@/app/work-orders/actions";
-import { getClientAction } from "@/app/clientes/actions";
-import { ClientPicker } from "@/components/clients/client-picker";
-import { VehiclePicker } from "@/components/clients/vehicle-picker";
-import type { WoClient, WoVehicle } from "@/lib/clients-shared";
+import { OrderParties } from "@/components/work-orders/order-parties";
 import type {
   WoBranch,
   WoCustomerType,
@@ -53,30 +49,6 @@ export function NewWorkOrderForm({
 }) {
   const [state, formAction, pending] = useActionState(createWorkOrderAction, initialState);
   const [segment, setSegment] = useState<string>("");
-  const [client, setClient] = useState<WoClient | null>(null);
-  const [vehicle, setVehicle] = useState<WoVehicle | null>(null);
-  // Dueño de la unidad elegida: se ofrece como cliente de la OT (no se asigna solo — en un
-  // siniestro el cliente es la aseguradora, no el dueño).
-  const [vehicleOwner, setVehicleOwner] = useState<WoClient | null>(null);
-
-  const customerTypeOptions = useMemo(
-    () => customerTypes.map((c) => ({ key: c.name, label: c.customer_type_name })),
-    [customerTypes]
-  );
-  const vehicleTypeOptions = useMemo(
-    () => vehicleTypes.map((v) => ({ key: v.name, label: v.vehicle_type_name })),
-    [vehicleTypes]
-  );
-
-  async function selectVehicle(v: WoVehicle | null) {
-    setVehicle(v);
-    setVehicleOwner(null);
-    if (v?.client_id && v.client_id !== client?.name) {
-      const res = await getClientAction(v.client_id);
-      if (res.ok) setVehicleOwner(res.data);
-    }
-  }
-
   // Avisar una sola vez por cada OT creada (state cambia de identidad en cada submit). El modal
   // desmonta el form al cerrarse, así que no hace falta limpiar los campos acá.
   useEffect(() => {
@@ -99,54 +71,7 @@ export function NewWorkOrderForm({
       )}
 
       <div className="grid gap-4 @3xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cliente</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <input type="hidden" name="client_id" value={client?.name ?? ""} />
-            <ClientPicker
-              value={client}
-              onChange={setClient}
-              customerTypes={customerTypeOptions}
-              canViewTaxId={canViewTaxId}
-            />
-            {!client && vehicleOwner && (
-              <button
-                type="button"
-                onClick={() => setClient(vehicleOwner)}
-                className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                Usar el dueño de la unidad ({vehicleOwner.client_name})
-              </button>
-            )}
-            <div className="space-y-1">
-              <Label htmlFor="siniestro">Nº Siniestro</Label>
-              <Input id="siniestro" name="siniestro" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Vehículo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <input type="hidden" name="vehicle_id" value={vehicle?.name ?? ""} />
-            <VehiclePicker
-              value={vehicle}
-              onChange={selectVehicle}
-              vehicleTypes={vehicleTypeOptions}
-              customerTypes={customerTypeOptions}
-              canViewTaxId={canViewTaxId}
-              suggestedOwner={client}
-            />
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_mileage">Kilometraje al ingreso</Label>
-              <Input id="vehicle_mileage" name="vehicle_mileage" inputMode="numeric" />
-            </div>
-          </CardContent>
-        </Card>
+        <OrderParties customerTypes={customerTypes} vehicleTypes={vehicleTypes} canViewTaxId={canViewTaxId} />
 
         <Card className="@3xl:col-span-2">
           <CardHeader>

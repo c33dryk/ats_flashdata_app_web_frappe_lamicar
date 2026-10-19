@@ -170,6 +170,12 @@ relevante ahí, para no tener que releerlo de nuevo:
     patente) con **alta rápida inline** si no existen; el server copia sus datos en la OT
     (`customer_*`, `vehicle_*` = foto histórica) y guarda `client_id`/`vehicle_id`. El dueño de
     la unidad no se fuerza como cliente de la OT (en siniestros el cliente es la aseguradora).
+    **Relación OT ↔ cliente/unidad en las dos direcciones**: ficha del cliente con sus OTs y
+    unidades, ficha de la unidad con su historial (incluye OTs viejas por patente escrita),
+    panel de OT con links a ambas fichas (`/clientes?c=`, `/unidades?u=` abren el panel). Alta y
+    edición de OT comparten `components/work-orders/order-parties.tsx` (UI) y
+    `lib/frappe/order-parties.ts` (server: trae el maestro y copia sus datos); en edición, una
+    OT vieja sin vincular muestra un aviso y se vincula eligiendo cliente/unidad.
 24. **Menú por áreas** (Operación / Clientes / Administración / Sistema), filtrado por
     `SCREEN_ACCESS`. Técnico: Dashboard + Operaciones. Facturación y Remitos: todos menos el
     técnico. "Órdenes de Trabajo" salió del menú (la página completa de cada OT sigue).

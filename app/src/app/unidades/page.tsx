@@ -3,11 +3,11 @@ import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { VehiclesBoard } from "@/components/clients/vehicles-board";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canAccessPath } from "@/lib/permissions";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getClients, getVehicles } from "@/lib/frappe/clients";
 import { getCatalogOptions, getDashboardWorkOrders } from "@/lib/frappe/work-orders";
-import { normalizePlate, type WoClient, type WoVehicle } from "@/lib/clients-shared";
+import { normalizePlate, type OrderRef, type WoClient, type WoVehicle } from "@/lib/clients-shared";
 import type { DashboardCatalogs } from "@/lib/dashboard-metrics";
 
 // ABM de unidades / flota (WO Vehicle). Acceso: SCREEN_ACCESS["/unidades"].
@@ -18,7 +18,7 @@ export default async function UnidadesPage() {
 
   let vehicles: WoVehicle[] = [];
   let clients: WoClient[] = [];
-  let orderCounts: Record<string, number> = {};
+  let ordersByVehicle: Record<string, OrderRef[]> = {};
   let catalogs: DashboardCatalogs | null = null;
   let errorMessage: string | null = null;
 
@@ -28,9 +28,10 @@ export default async function UnidadesPage() {
     clients = canViewTaxId ? c : c.map((x) => ({ ...x, tax_id: undefined }));
     catalogs = cat;
     // OTs por unidad: las vinculadas (vehicle_id) y las viejas por patente escrita (normalizada).
-    orderCounts = orders.reduce<Record<string, number>>((acc, o) => {
+    // Historial por unidad: OTs vinculadas (vehicle_id) y, en OTs viejas, por patente escrita.
+    ordersByVehicle = orders.reduce<Record<string, OrderRef[]>>((acc, o) => {
       const plate = o.vehicle_id || normalizePlate(o.license_plate ?? "");
-      if (plate) acc[plate] = (acc[plate] ?? 0) + 1;
+      if (plate) (acc[plate] ??= []).push({ name: o.name, status: o.status, customer_name: o.customer_name, creation: o.creation });
       return acc;
     }, {});
   } catch (err) {
@@ -58,7 +59,8 @@ export default async function UnidadesPage() {
           <VehiclesBoard
             vehicles={vehicles}
             clients={clients}
-            orderCounts={orderCounts}
+            ordersByVehicle={ordersByVehicle}
+            orderBase={canAccessPath(session.role, "/operaciones") ? "/operaciones" : "/facturacion"}
             vehicleTypes={catalogs.vehicleTypes}
             customerTypes={catalogs.customerTypes}
             canViewTaxId={canViewTaxId}

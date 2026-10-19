@@ -30,6 +30,15 @@ export interface WoVehicle {
   modified?: string;
 }
 
+/** Referencia liviana a una OT para listarla en la ficha del cliente / unidad. */
+export interface OrderRef {
+  name: string;
+  status: string;
+  license_plate?: string;
+  customer_name?: string;
+  creation?: string;
+}
+
 /** Patente normalizada: mayúsculas, sin espacios ni guiones ("ab 123-cd" → "AB123CD"). Es el
  *  nombre del registro en WO Vehicle, así la misma patente nunca se duplica por cómo se tipeó. */
 export function normalizePlate(value: string): string {

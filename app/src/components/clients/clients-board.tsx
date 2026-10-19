@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,7 +21,8 @@ import { toast } from "@/components/ui/toast";
 import { setClientActiveAction } from "@/app/clientes/actions";
 import { labelOf, type CatalogOption } from "@/lib/dashboard-metrics";
 import { cn } from "@/lib/utils";
-import type { WoClient, WoVehicle } from "@/lib/clients-shared";
+import type { OrderRef, WoClient, WoVehicle } from "@/lib/clients-shared";
+import { OrderList } from "./order-list";
 import { ClientForm } from "./client-form";
 
 // ABM de clientes (WO Client): listado con búsqueda, alta/edición en modal, baja lógica.
@@ -28,14 +30,17 @@ import { ClientForm } from "./client-form";
 export function ClientsBoard({
   clients,
   vehicles,
-  orderCounts,
+  ordersByClient,
+  orderBase,
   customerTypes,
   canViewTaxId,
 }: {
   clients: WoClient[];
   vehicles: WoVehicle[];
-  /** Cantidad de OTs por client_id. */
-  orderCounts: Record<string, number>;
+  /** OTs de cada cliente (Work Order.client_id), más nuevas primero. */
+  ordersByClient: Record<string, OrderRef[]>;
+  /** Pantalla donde se abren las OTs (/operaciones, o /facturacion para quien no ve el taller). */
+  orderBase: string;
   customerTypes: CatalogOption[];
   canViewTaxId: boolean;
 }) {
@@ -43,7 +48,18 @@ export function ClientsBoard({
   const [query, setQuery] = useState("");
   const [type, setType] = useState("");
   const [showInactive, setShowInactive] = useState(false);
-  const [editing, setEditing] = useState<WoClient | "new" | null>(null);
+  const searchParams = useSearchParams();
+  // Ficha abierta en el panel: vive en la URL (?c=) para poder linkearla desde la OT.
+  const [editing, setEditingState] = useState<WoClient | "new" | null>(
+    () => clients.find((x) => x.name === searchParams.get("c")) ?? null
+  );
+  function setEditing(value: WoClient | "new" | null) {
+    setEditingState(value);
+    const url = new URL(window.location.href);
+    if (value && value !== "new") url.searchParams.set("c", value.name);
+    else url.searchParams.delete("c");
+    window.history.replaceState(null, "", url);
+  }
   const [pending, startTransition] = useTransition();
 
   const vehiclesByClient = useMemo(() => {
@@ -150,7 +166,7 @@ export function ClientsBoard({
                     {c.email && <span className="block text-xs text-muted-foreground">{c.email}</span>}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{vehiclesByClient.get(c.name)?.length ?? 0}</TableCell>
-                  <TableCell className="text-right tabular-nums">{orderCounts[c.name] ?? 0}</TableCell>
+                  <TableCell className="text-right tabular-nums">{ordersByClient[c.name]?.length ?? 0}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -182,13 +198,24 @@ export function ClientsBoard({
                   ) : (
                     <ul className="flex flex-wrap gap-2">
                       {(vehiclesByClient.get(current.name) ?? []).map((v) => (
-                        <li key={v.name} className="rounded-md border border-border px-2 py-1 text-sm">
-                          <span className="font-mono text-xs">{v.license_plate}</span>{" "}
-                          <span className="text-muted-foreground">{v.brand_model}</span>
+                        <li key={v.name}>
+                          <Link
+                            href={`/unidades?u=${encodeURIComponent(v.name)}`}
+                            className="block rounded-md border border-border px-2 py-1 text-sm hover:bg-muted/50"
+                          >
+                            <span className="font-mono text-xs">{v.license_plate}</span>{" "}
+                            <span className="text-muted-foreground">{v.brand_model}</span>
+                          </Link>
                         </li>
                       ))}
                     </ul>
                   )}
+                </div>
+                <div className="space-y-2 border-t border-border pt-4">
+                  <p className="text-sm font-medium">
+                    Órdenes de trabajo ({ordersByClient[current.name]?.length ?? 0})
+                  </p>
+                  <OrderList orders={ordersByClient[current.name] ?? []} orderBase={orderBase} show="plate" />
                 </div>
                 <div className="flex justify-between border-t border-border pt-4">
                   <span className="text-sm text-muted-foreground">

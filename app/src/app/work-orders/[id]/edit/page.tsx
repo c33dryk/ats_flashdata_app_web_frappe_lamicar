@@ -10,6 +10,8 @@ import {
   getRawCatalogs,
   type RawCatalogs,
 } from "@/lib/frappe/work-orders";
+import { getClient, getVehicle } from "@/lib/frappe/clients";
+import type { WoClient, WoVehicle } from "@/lib/clients-shared";
 
 const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
 
@@ -33,10 +35,17 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
   }
 
   let catalogs: RawCatalogs | null = null;
+  let linkedClient: WoClient | null = null;
+  let linkedVehicle: WoVehicle | null = null;
   let errorMessage: string | null = null;
 
   try {
-    catalogs = await getRawCatalogs();
+    [catalogs, linkedClient, linkedVehicle] = await Promise.all([
+      getRawCatalogs(),
+      wo.client_id ? getClient(wo.client_id).catch(() => null) : null,
+      wo.vehicle_id ? getVehicle(wo.vehicle_id).catch(() => null) : null,
+    ]);
+    if (linkedClient && !can(session.role, "viewTaxId")) linkedClient = { ...linkedClient, tax_id: undefined };
   } catch (err) {
     errorMessage =
       err instanceof FrappeApiError
@@ -78,6 +87,9 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
               serviceTypes={catalogs.serviceTypes}
               operators={catalogs.operators}
               branches={catalogs.branches}
+              canViewTaxId={can(session.role, "viewTaxId")}
+              initialClient={linkedClient}
+              initialVehicle={linkedVehicle}
             />
           )
         )}

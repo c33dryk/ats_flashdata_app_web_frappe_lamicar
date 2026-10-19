@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/table";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import { updateWorkOrderAction, type EditWorkOrderState } from "@/app/work-orders/[id]/edit/actions";
+import { OrderParties } from "@/components/work-orders/order-parties";
+import type { WoClient, WoVehicle } from "@/lib/clients-shared";
 import type {
   WoCustomerType,
   WoBranch,
@@ -47,6 +49,9 @@ export function EditWorkOrderForm({
   serviceTypes,
   operators,
   branches = [],
+  canViewTaxId = false,
+  initialClient = null,
+  initialVehicle = null,
 }: {
   workOrder: WorkOrder;
   customerTypes: WoCustomerType[];
@@ -55,6 +60,10 @@ export function EditWorkOrderForm({
   serviceTypes: WoServiceType[];
   operators: WoOperator[];
   branches?: WoBranch[];
+  canViewTaxId?: boolean;
+  /** Cliente / unidad vinculados (si la OT ya está vinculada a los maestros). */
+  initialClient?: WoClient | null;
+  initialVehicle?: WoVehicle | null;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateWorkOrderAction, initialState);
@@ -101,101 +110,14 @@ export function EditWorkOrderForm({
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cliente</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="customer_type_id">Tipo de cliente *</Label>
-              <select
-                id="customer_type_id"
-                name="customer_type_id"
-                required
-                defaultValue={workOrder.customer_type_id}
-                className={selectClassName}
-              >
-                <option value="" disabled>
-                  Seleccionar...
-                </option>
-                {customerTypes.map((ct) => (
-                  <option key={ct.name} value={ct.name}>
-                    {ct.customer_type_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="customer_name">Nombre *</Label>
-              <Input id="customer_name" name="customer_name" required defaultValue={workOrder.customer_name} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="customer_phone">Teléfono</Label>
-              <Input id="customer_phone" name="customer_phone" defaultValue={workOrder.customer_phone} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="customer_email">Email</Label>
-              <Input
-                id="customer_email"
-                name="customer_email"
-                type="email"
-                defaultValue={workOrder.customer_email}
-              />
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="siniestro">Nº Siniestro</Label>
-              <Input id="siniestro" name="siniestro" defaultValue={workOrder.siniestro} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Vehículo</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="vehicle_type_id">Categoría</Label>
-              <select
-                id="vehicle_type_id"
-                name="vehicle_type_id"
-                defaultValue={workOrder.vehicle_type_id ?? ""}
-                className={selectClassName}
-              >
-                <option value="">Sin especificar</option>
-                {vehicleTypes.map((vt) => (
-                  <option key={vt.name} value={vt.name}>
-                    {vt.vehicle_type_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="license_plate">Patente *</Label>
-              <Input id="license_plate" name="license_plate" required defaultValue={workOrder.license_plate} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_brand_model">Marca / Modelo</Label>
-              <Input
-                id="vehicle_brand_model"
-                name="vehicle_brand_model"
-                defaultValue={workOrder.vehicle_brand_model}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_year">Año</Label>
-              <Input id="vehicle_year" name="vehicle_year" defaultValue={workOrder.vehicle_year} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="vehicle_color">Color</Label>
-              <Input id="vehicle_color" name="vehicle_color" defaultValue={workOrder.vehicle_color} />
-            </div>
-            <div className="col-span-2 space-y-1">
-              <Label htmlFor="vehicle_mileage">Kilometraje</Label>
-              <Input id="vehicle_mileage" name="vehicle_mileage" defaultValue={workOrder.vehicle_mileage} />
-            </div>
-          </CardContent>
-        </Card>
+        <OrderParties
+          customerTypes={customerTypes}
+          vehicleTypes={vehicleTypes}
+          canViewTaxId={canViewTaxId}
+          initialClient={initialClient}
+          initialVehicle={initialVehicle}
+          workOrder={workOrder}
+        />
 
         <Card className="lg:col-span-2">
           <CardHeader>
