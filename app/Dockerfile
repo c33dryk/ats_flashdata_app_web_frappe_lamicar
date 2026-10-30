@@ -8,6 +8,9 @@ RUN npm ci
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Hash del commit para la versión visible (src/lib/version.ts): acá no hay .git.
+ARG GIT_COMMIT=""
+ENV GIT_COMMIT=$GIT_COMMIT
 RUN npm run build
 
 FROM base AS runner

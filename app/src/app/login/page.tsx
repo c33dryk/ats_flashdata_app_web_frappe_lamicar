@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import { LoginForm } from "@/components/login-form";
+import { BUILD_DATE, VERSION_LABEL } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,9 @@ export default function LoginPage() {
           >
             <Image src="/Flashdata.png" alt="Flashdata" width={113} height={40} className="h-8 w-auto rounded-sm" />
           </a>
+          <span className="ml-auto font-mono text-xs text-white/30" title={BUILD_DATE ? `Build ${BUILD_DATE}` : undefined}>
+            {VERSION_LABEL}
+          </span>
         </div>
       </div>
 

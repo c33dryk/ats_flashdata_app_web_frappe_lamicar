@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS, type SessionPayload } from "@/lib/auth-shared";
+import { BUILD_DATE, VERSION_LABEL } from "@/lib/version";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { canAccessPath } from "@/lib/permissions";
 import { useSidebar } from "./sidebar-context";
@@ -333,6 +334,10 @@ export function AppSidebar({ session }: { session: SessionPayload | null }) {
                   <LogOut className="h-4 w-4" />
                   Cerrar sesión
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-1.5 py-1 font-mono text-[11px] text-muted-foreground" title={BUILD_DATE ? `Build ${BUILD_DATE}` : undefined}>
+                  {APP_NAME} {VERSION_LABEL}
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
