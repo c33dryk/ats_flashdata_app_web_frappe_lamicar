@@ -39,8 +39,12 @@ export GIT_COMMIT
 VERSION="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' app/package.json | head -1)"
 echo "==> Desplegando v${VERSION} · ${GIT_COMMIT} ($(git describe --tags --always))"
 
-$COMPOSE up -d --build
+# --remove-orphans: si alguien corrió `docker compose up` sin -f en el server, levanta el compose de
+# desarrollo (servicio "app", puerto publicado en el host, sin Traefik) en este mismo proyecto.
+$COMPOSE up -d --build --remove-orphans
 docker image prune -f >/dev/null
 
+# Dar tiempo a que Next arranque, si no el log sale vacío.
+sleep 5
 echo "==> Listo. Últimas líneas del log:"
 $COMPOSE logs --tail=20
