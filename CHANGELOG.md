@@ -1,11 +1,11 @@
 # Changelog
 
 Versión de la app = `version` de `app/package.json` ([SemVer](https://semver.org/lang/es/)). Se ve
-en el login y en el menú de usuario del sidebar (`v0.2.0 · <commit>`).
+en el login y en el menú de usuario del sidebar (`v1.2.0 · <commit>`).
 
-- **patch** (0.1.**1**): arreglos y parches de seguridad sin cambio de funcionalidad.
-- **minor** (0.**2**.0): funcionalidad nueva (pantallas, campos, flujos).
-- **major** (**1**.0.0): cambios que rompen algo para el usuario o requieren cambios en Frappe
+- **patch** (1.2.**1**): arreglos y parches de seguridad sin cambio de funcionalidad.
+- **minor** (1.**3**.0): funcionalidad nueva (pantallas, campos, flujos).
+- **major** (**2**.0.0): cambios que rompen algo para el usuario o requieren cambios en Frappe
   (`schema/CAMBIOS_FRAPPE.md`) antes de desplegar.
 
 Release: `cd app && npm run release:minor` (o `:patch`/`:major`), anotar abajo, commit
@@ -14,7 +14,7 @@ Deploy en el server: `./deploy.sh` (o `./deploy.sh vX.Y.Z` para un release puntu
 
 ## [Sin publicar]
 
-## [0.2.0] - 2026-10-30
+## [1.2.0] - 2026-10-30
 
 ### Seguridad
 - `/api/files`: bloqueado el path traversal que permitía leer la API de Frappe con el service account.
