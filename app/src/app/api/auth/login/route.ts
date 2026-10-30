@@ -17,6 +17,9 @@ export async function POST(req: Request) {
   }
 
   const role = await getAppRoleForUser(email);
+  if (!role) {
+    return NextResponse.json({ error: "Tu usuario no tiene acceso a esta aplicación" }, { status: 403 });
+  }
 
   await createSession({
     userId: email,

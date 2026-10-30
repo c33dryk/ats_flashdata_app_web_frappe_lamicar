@@ -96,7 +96,23 @@ export async function frappeUploadFile(params: {
 // navegador directo (un <a href> no puede mandar ese header). Por eso el browser nunca pega
 // directo contra Frappe para ver un archivo: pasa por /api/files, que hace este fetch server-side
 // con el service account y le devuelve los bytes a la app.
+//
+// `path` viene del navegador (?path=...): solo se acepta un archivo plano de /files o
+// /private/files. Sin esto, "/files/../api/resource/User" lo resuelve fetch() a la API REST de
+// Frappe y la respondería con el token del service account (lectura de todo, salteando roles).
+const FRAPPE_FILE_PATH = /^\/(private\/)?files\/[^/\\?#%]+$/;
+
+export function isFrappeFilePath(path: string): boolean {
+  if (!FRAPPE_FILE_PATH.test(path) || path.includes("..")) return false;
+  const resolved = new URL(path, "http://frappe.invalid");
+  // Si fetch() normalizaría la ruta (puntos, barras invertidas), deja de coincidir con la pedida.
+  return decodeURIComponent(resolved.pathname) === path && !resolved.search && !resolved.hash;
+}
+
 export async function frappeFetchFile(path: string): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!isFrappeFilePath(path)) {
+    throw new FrappeApiError(`Ruta de archivo inválida: ${path}`, 400);
+  }
   const res = await fetch(`${getBaseUrl()}${path}`, {
     headers: { Authorization: authHeader() },
     cache: "no-store",

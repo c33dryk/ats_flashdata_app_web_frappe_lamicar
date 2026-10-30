@@ -24,7 +24,10 @@ export async function loginToFrappe(usr: string, pwd: string): Promise<FrappeLog
 
   if (!res.ok) return { ok: false };
 
-  const body = (await res.json().catch(() => ({}))) as { full_name?: string };
+  const body = (await res.json().catch(() => ({}))) as { full_name?: string; verification?: unknown; tmp_id?: unknown };
+  // Con 2FA activo Frappe responde 200 pidiendo el código (verification/tmp_id): la clave sola
+  // no alcanza, así que no se trata como login válido.
+  if (body.verification || body.tmp_id) return { ok: false };
   return { ok: true, fullName: body.full_name };
 }
 
@@ -34,8 +37,9 @@ interface FrappeUser {
 
 // Mapeo Roles de Frappe -> AppRole del proyecto Lamicar. Un usuario puede tener varios roles de
 // Frappe asignados; si tiene más de uno de los 5 propios de este proyecto, gana el de mayor
-// privilegio según FRAPPE_ROLE_PRIORITY. Sin ninguno de los 5, cae a "auditor" (el de menor
-// privilegio) en vez de romper — evita dejar afuera a un usuario mal configurado en Frappe.
+// privilegio según FRAPPE_ROLE_PRIORITY. Sin ninguno de los 5 devuelve null y el login se rechaza:
+// cualquier otro usuario de Frappe (Website User, portal de clientes, otras apps del sitio) no
+// tiene que entrar a esta app — antes caía a "auditor", que ve importes y baja expedientes.
 //
 // Usa GET /api/resource/User/<email> (campo child table `roles`) en vez de listar el doctype
 // "Has Role" directo: Frappe deniega check_select_permission sobre child tables aunque tengan un
@@ -50,11 +54,11 @@ const FRAPPE_ROLE_PRIORITY: Array<[string, AppRole]> = [
   ["WO Auditor", "auditor"],
 ];
 
-export async function getAppRoleForUser(userEmail: string): Promise<AppRole> {
+export async function getAppRoleForUser(userEmail: string): Promise<AppRole | null> {
   const user = await getDoc<FrappeUser>("User", userEmail);
   const roles = new Set((user.roles ?? []).map((r) => r.role));
   for (const [frappeRole, appRole] of FRAPPE_ROLE_PRIORITY) {
     if (roles.has(frappeRole)) return appRole;
   }
-  return "auditor";
+  return null;
 }

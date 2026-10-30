@@ -13,6 +13,7 @@ import {
 } from "@/lib/frappe/work-orders";
 import {
   EVIDENCE_LOCKED_STATUSES,
+  isUploadableFilename,
   MAX_UPLOAD_BYTES,
   UPLOADABLE_TYPES,
   withRequirementPrefix,
@@ -56,6 +57,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (file.size > MAX_UPLOAD_BYTES) {
     return NextResponse.json({ error: "El archivo supera los 8 MB." }, { status: 413 });
+  }
+  if (!isUploadableFilename(file.name)) {
+    return NextResponse.json({ error: "Solo se aceptan fotos (JPG, PNG, WEBP, HEIC) o PDF." }, { status: 415 });
   }
 
   let fresh: WorkOrder;

@@ -19,8 +19,13 @@ function sign(value: string): string {
   return crypto.createHmac("sha256", getSecret()).update(value).digest("base64url");
 }
 
+// El vencimiento va dentro del token firmado: el maxAge de la cookie es solo una sugerencia al
+// navegador, y sin esto una cookie copiada seguiría valiendo para siempre.
+type SessionToken = SessionPayload & { exp: number };
+
 function encode(payload: SessionPayload): string {
-  const base64 = Buffer.from(JSON.stringify(payload), "utf-8").toString("base64url");
+  const token: SessionToken = { ...payload, exp: Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS };
+  const base64 = Buffer.from(JSON.stringify(token), "utf-8").toString("base64url");
   return `${base64}.${sign(base64)}`;
 }
 
@@ -36,7 +41,10 @@ function decode(token: string): SessionPayload | null {
   }
 
   try {
-    return JSON.parse(Buffer.from(base64, "base64url").toString("utf-8")) as SessionPayload;
+    const { exp, ...payload } = JSON.parse(Buffer.from(base64, "base64url").toString("utf-8")) as SessionToken;
+    // Tokens sin `exp` (emitidos antes de este cambio) también se rechazan: obliga a reloguear.
+    if (typeof exp !== "number" || exp < Date.now() / 1000) return null;
+    return payload;
   } catch {
     return null;
   }

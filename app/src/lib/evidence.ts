@@ -85,6 +85,13 @@ export function isImage(e: Pick<WoEvidence, "url" | "filename">): boolean {
   return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(e.filename || e.url);
 }
 
+export function isPdf(e: Pick<WoEvidence, "url" | "filename">): boolean {
+  return /\.pdf$/i.test(e.filename || e.url);
+}
+
+/** Extensiones que acepta la carga de evidencia (fotos y PDF). Lo valida el server, no el `accept`. */
+export const isUploadableFilename = (name: string) => /\.(jpe?g|png|webp|gif|heic|heif|pdf)$/i.test(name);
+
 /**
  * URL para ver un archivo desde el navegador: los de Frappe ("/private/files/...") pasan por el
  * proxy /api/files; los que ya son URLs públicas absolutas (datos de ejemplo del MVP) van directo.

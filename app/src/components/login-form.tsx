@@ -32,7 +32,9 @@ export function LoginForm() {
         setError(data.error ?? "No se pudo iniciar sesión");
         return;
       }
-      const next = searchParams.get("next") ?? "/dashboard";
+      // Solo rutas internas: "//otro.com" o "/\otro.com" llevarían fuera de la app.
+      const requested = searchParams.get("next");
+      const next = requested && /^\/(?![/\\])/.test(requested) ? requested : "/dashboard";
       router.push(next);
       router.refresh();
     } finally {

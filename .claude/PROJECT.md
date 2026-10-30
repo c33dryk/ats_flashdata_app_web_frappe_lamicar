@@ -51,7 +51,8 @@ relevante ahí, para no tener que releerlo de nuevo:
 2. **Roles reales**: `AppRole` (`auth-shared.ts`) son los 5 roles de Lamicar (`admin`, `recepcion`,
    `tecnico`, `facturador`, `auditor`), mapeados desde los Roles de Frappe en
    `lib/frappe/auth.ts` → `getAppRoleForUser` (prioridad admin > recepcion > tecnico > facturador
-   > auditor; sin ninguno de los 5, cae a `auditor`). Nav: `/work-orders` en `navPrincipal`.
+   > auditor; sin ninguno de los 5, el login se rechaza con 403 — antes caía a `auditor`, lo que
+   dejaba entrar a cualquier usuario de Frappe). Nav: `/work-orders` en `navPrincipal`.
 3. **Listado + detalle de OT** (`/work-orders`, `/work-orders/[id]`) — solo lectura.
 4. **Color de marca configurable**: `BRAND_COLOR` en `.env` → CSS var `--brand` inyectada en
    `layout.tsx`, usada en `bg-brand`/`text-brand` (sidebar activo, `variant="brand"` de
@@ -107,6 +108,11 @@ relevante ahí, para no tener que releerlo de nuevo:
     `ev.url`/`delivery_signature_url` no abrían — ver gotcha correspondiente más abajo. Cualquier
     link a un archivo subido con `frappeUploadFile({ isPrivate: true, ... })` tiene que pasar por
     `/api/files?path=<file_url>` en vez de usar `ev.url`/`file_url` directo.
+    **Seguridad:** `isFrappeFilePath` (en `client.ts`, usado por `frappeFetchFile`) solo acepta un
+    archivo plano de `/files` o `/private/files` — sin eso `?path=/files/../api/resource/...` leía
+    toda la API de Frappe con el service account. `/api/files` sirve inline solo imágenes (con CSP
+    sandbox) y PDF; el resto va como descarga (`attachment`), y la carga de evidencia solo acepta
+    fotos y PDF (`isUploadableFilename`): un `.html`/`.svg` subido era XSS almacenado.
 13. **Permisos centralizados** (`lib/permissions.ts`): `can(role, capability)` (createOrder,
     editOrder, uploadEvidence, manageCatalogs) y `SCREEN_ACCESS`/`canAccessPath` (qué pantallas ve
     cada rol). Lo usan sidebar (filtra el menú), `proxy.ts` (bloquea rutas), páginas y Server

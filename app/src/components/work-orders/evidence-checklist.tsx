@@ -26,6 +26,7 @@ import {
   STAGE_EVIDENCE_TYPE,
   fileHref,
   isImage,
+  isPdf,
   matchesRequirement,
   requirementCount,
   visibleNotes,
@@ -341,12 +342,15 @@ export function EvidenceChecklist({
                 // Firmas: siempre sobre blanco (las guardadas antes del fix son PNG transparentes).
                 className={cn("mx-auto max-h-[70dvh] rounded-md object-contain", viewing.type === "signature" && "bg-white")}
               />
-            ) : (
+            ) : isPdf(viewing) ? (
               <iframe
                 src={fileHref(viewing.url)}
                 title={viewing.filename ?? "Archivo"}
                 className="h-[70dvh] w-full rounded-md border border-border"
               />
+            ) : (
+              // Otros tipos no se muestran embebidos en la app (/api/files los fuerza a descarga).
+              <p className="text-sm text-muted-foreground">Vista previa no disponible: usá “Abrir original”.</p>
             )}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <a
