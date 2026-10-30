@@ -9,9 +9,12 @@ en el login y en el menú de usuario del sidebar (`v0.2.0 · <commit>`).
   (`schema/CAMBIOS_FRAPPE.md`) antes de desplegar.
 
 Release: `cd app && npm run release:minor` (o `:patch`/`:major`), anotar abajo, commit
-`chore(release): vX.Y.Z`, `git tag vX.Y.Z`, `git push --follow-tags`.
+`chore(release): vX.Y.Z`, `git tag -a vX.Y.Z -m vX.Y.Z`, `git push --follow-tags`.
+Deploy en el server: `./deploy.sh` (o `./deploy.sh vX.Y.Z` para un release puntual).
 
 ## [Sin publicar]
+
+## [0.2.0] - 2026-10-30
 
 ### Seguridad
 - `/api/files`: bloqueado el path traversal que permitía leer la API de Frappe con el service account.
@@ -22,6 +25,7 @@ Release: `cd app && npm run release:minor` (o `:patch`/`:major`), anotar abajo, 
 
 ### Agregado
 - Versión visible en el login y en el menú de usuario del sidebar.
+- `deploy.sh`: deploy de producción (pull + build con el commit + logs).
 - Formularios de alta/edición de OT con pestañas, tableros por rol, políticas de evidencia por cliente.
 
 ## [0.1.0]

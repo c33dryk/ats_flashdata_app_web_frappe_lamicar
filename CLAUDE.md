@@ -88,8 +88,8 @@ devuelve el cache vacío de `app/`). No crear un `app/.env` aparte.
 - `SESSION_COOKIE_SECURE` default `true` acá (hay HTTPS real).
 - Versión visible (login + menú de usuario, `src/lib/version.ts`): `version` de `app/package.json`
   + commit + fecha, inyectados en build por `next.config.ts`. En Docker no hay `.git`, así que el
-  commit va como build-arg: `GIT_COMMIT=$(git rev-parse --short HEAD) docker compose -f
-  docker-compose.prod.yml up -d --build`. Releases y criterio SemVer en `CHANGELOG.md`.
+  commit va como build-arg — `deploy.sh` (raíz) ya lo hace: pull + `GIT_COMMIT=... docker
+  compose -f docker-compose.prod.yml up -d --build`. Releases y criterio SemVer en `CHANGELOG.md`.
 
 ## Autenticación — sesión propia + login-proxy a Frappe
 
