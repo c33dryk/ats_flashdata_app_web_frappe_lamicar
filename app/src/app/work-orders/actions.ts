@@ -17,7 +17,7 @@ import {
 } from "@/lib/frappe/work-orders";
 import { resolveOrderParties } from "@/lib/frappe/order-parties";
 import { parseMileage } from "@/lib/format";
-import { applyServerPrices, parseItems, sumItems } from "@/lib/work-order-items";
+import { applyServerPrices, keepOwnRowNames, parseItems, sumItems } from "@/lib/work-order-items";
 
 export interface CreateWorkOrderState {
   error: string | null;
@@ -68,6 +68,7 @@ export async function createWorkOrderAction(
   // Presupuesto inicial (opcional). Quien no ve importes no manda precios: los pone el server.
   let items = parseItems(str(formData, "items_json"));
   if (items === null) return { error: "Los ítems del presupuesto no son válidos." };
+  items = keepOwnRowNames(items, []); // OT nueva: ninguna fila existente
   if (!can(session.role, "viewAmounts")) {
     items = applyServerPrices(items, [], await getServiceTypes().catch(() => []));
   }

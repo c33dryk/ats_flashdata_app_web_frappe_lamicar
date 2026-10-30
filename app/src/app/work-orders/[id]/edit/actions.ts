@@ -7,7 +7,7 @@ import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { resolveOrderParties } from "@/lib/frappe/order-parties";
 import { parseMileage } from "@/lib/format";
-import { applyServerPrices, parseItems, sumItems } from "@/lib/work-order-items";
+import { applyServerPrices, keepOwnRowNames, parseItems, sumItems } from "@/lib/work-order-items";
 import {
   getEvidencePoliciesForCustomerType,
   getServiceTypes,
@@ -58,6 +58,7 @@ export async function updateWorkOrderAction(
   if (items === null) {
     return { error: "Los ítems cargados no son válidos.", success: false };
   }
+  items = keepOwnRowNames(items, fresh.items ?? []);
   // Quien no ve importes (técnico) no manda precios: los pone el server (ver applyServerPrices).
   if (!can(session.role, "viewAmounts")) {
     items = applyServerPrices(items, fresh.items ?? [], await getServiceTypes().catch(() => []));

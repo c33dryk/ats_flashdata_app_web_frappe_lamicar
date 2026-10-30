@@ -38,6 +38,15 @@ export function parseItems(raw: string | undefined): WorkOrderItem[] | null {
   return items;
 }
 
+/**
+ * El `name` de un ítem lo manda el navegador: solo se respeta si es una fila que ya tiene esta
+ * misma OT (si no, se manda como fila nueva). Evita editar/reasignar filas hijas de otra OT.
+ */
+export function keepOwnRowNames(items: WorkOrderItem[], previous: WorkOrderItem[]): WorkOrderItem[] {
+  const own = new Set(previous.map((it) => it.name).filter(Boolean));
+  return items.map((it) => (it.name && own.has(it.name) ? it : { ...it, name: undefined }));
+}
+
 /** Total neto de los ítems, redondeado a centavos. */
 export function sumItems(items: WorkOrderItem[]): number {
   return Math.round(items.reduce((acc, it) => acc + (it.amount_net ?? 0), 0) * 100) / 100;

@@ -49,6 +49,10 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
       wo.vehicle_id ? getVehicle(wo.vehicle_id).catch(() => null) : null,
     ]);
     if (linkedClient && !can(session.role, "viewTaxId")) linkedClient = { ...linkedClient, tax_id: undefined };
+    // El precio de lista del catálogo tampoco viaja a quien no ve importes (técnico).
+    if (!can(session.role, "viewAmounts")) {
+      catalogs = { ...catalogs, serviceTypes: catalogs.serviceTypes.map((s) => ({ ...s, suggested_price: undefined })) };
+    }
   } catch (err) {
     errorMessage =
       err instanceof FrappeApiError
