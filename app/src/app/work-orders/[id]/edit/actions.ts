@@ -2,12 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { resolveOrderParties } from "@/lib/frappe/order-parties";
 import { parseMileage } from "@/lib/format";
-import { getWorkOrder, updateWorkOrder, type WorkOrder, type WorkOrderItem } from "@/lib/frappe/work-orders";
+import { applyServerPrices, parseItems, sumItems } from "@/lib/work-order-items";
+import {
+  getEvidencePoliciesForCustomerType,
+  getServiceTypes,
+  getWorkOrder,
+  updateWorkOrder,
+  type WorkOrder,
+} from "@/lib/frappe/work-orders";
 
 export interface EditWorkOrderState {
   error: string | null;
@@ -15,38 +22,6 @@ export interface EditWorkOrderState {
 }
 
 const LOCKED_STATUSES = ["Facturada", "Anulada"] as const;
-
-function parseItems(raw: string | undefined): WorkOrderItem[] | null {
-  if (!raw) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (!Array.isArray(parsed)) return null;
-
-  const items: WorkOrderItem[] = [];
-  for (const row of parsed) {
-    if (typeof row !== "object" || row === null) return null;
-    const r = row as Record<string, unknown>;
-    const description = typeof r.description === "string" ? r.description.trim() : "";
-    if (!description) continue;
-    const quantity = Number(r.quantity);
-    const unitPriceNet = Number(r.unit_price_net);
-    if (!Number.isFinite(quantity) || quantity <= 0) return null;
-    if (!Number.isFinite(unitPriceNet) || unitPriceNet < 0) return null;
-
-    items.push({
-      name: typeof r.name === "string" && r.name ? r.name : undefined,
-      description,
-      quantity,
-      unit_price_net: unitPriceNet,
-      amount_net: Math.round(quantity * unitPriceNet * 100) / 100,
-    });
-  }
-  return items;
-}
 
 export async function updateWorkOrderAction(
   _prevState: EditWorkOrderState,
@@ -75,12 +50,19 @@ export async function updateWorkOrderAction(
   if (LOCKED_STATUSES.includes(fresh.status as (typeof LOCKED_STATUSES)[number])) {
     return { error: "Esta orden ya no se puede editar.", success: false };
   }
+  if (!canSeeStatus(session.role, fresh.status)) {
+    return { error: "No tenés acceso a esta orden.", success: false };
+  }
 
-  const items = parseItems(str(formData, "items_json"));
+  let items = parseItems(str(formData, "items_json"));
   if (items === null) {
     return { error: "Los ítems cargados no son válidos.", success: false };
   }
-  const totalNet = Math.round(items.reduce((acc, it) => acc + (it.amount_net ?? 0), 0) * 100) / 100;
+  // Quien no ve importes (técnico) no manda precios: los pone el server (ver applyServerPrices).
+  if (!can(session.role, "viewAmounts")) {
+    items = applyServerPrices(items, fresh.items ?? [], await getServiceTypes().catch(() => []));
+  }
+  const totalNet = sumItems(items);
 
   // Cliente / unidad: si se eligió alguno en el form, se vincula y se copian sus datos del maestro;
   // lo no elegido queda como estaba (OTs viejas sin vincular siguen editables).
@@ -92,8 +74,21 @@ export async function updateWorkOrderAction(
   const mileage = parseMileage(str(formData, "vehicle_mileage"));
   if (!mileage.ok) return { error: mileage.error, success: false };
 
+  // Política de fotos (solo la manda el form con pestañas): tiene que ser del tipo de cliente que
+  // queda en la OT. Vacío = no tocar (OTs viejas sin política siguen editables).
+  const evidencePolicyId = str(formData, "evidence_policy_id");
+  if (evidencePolicyId) {
+    const policies = await getEvidencePoliciesForCustomerType(
+      parties.data.customer_type_id ?? fresh.customer_type_id
+    ).catch(() => []);
+    if (!policies.some((p) => p.name === evidencePolicyId)) {
+      return { error: "La política de fotos elegida no corresponde al tipo de cliente de la orden.", success: false };
+    }
+  }
+
   const payload: Partial<WorkOrder> = {
     ...parties.data,
+    evidence_policy_id: evidencePolicyId,
     siniestro: str(formData, "siniestro") ?? "",
     vehicle_mileage: mileage.value,
     service_segment_id: str(formData, "service_segment_id"),

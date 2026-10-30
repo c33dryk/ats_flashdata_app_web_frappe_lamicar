@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SidePanel } from "@/components/ui/side-panel";
 import { KpiGrid, KpiTile } from "@/components/ui/kpi-tile";
 import { toast } from "@/components/ui/toast";
-import { NewWorkOrderForm } from "@/components/work-orders/new-work-order-form";
+import { NewOrderTabsForm } from "@/components/work-orders/new-order-tabs-form";
 import { KanbanBoard } from "./kanban-board";
 import { WorkOrderPanel } from "./work-order-panel";
 import { useOrderPanel } from "./use-order-panel";
@@ -27,7 +27,7 @@ import { labelOf, orderValue, type DashboardCatalogs } from "@/lib/dashboard-met
 import { fmtMoney, fmtMoneyCompact } from "@/lib/format";
 import { isInGroup, resolveOperationsFilter } from "@/lib/work-order-status";
 import { cn } from "@/lib/utils";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
 import type { AppRole } from "@/lib/auth-shared";
 import {
   WORK_ORDER_STATUSES,
@@ -78,6 +78,11 @@ export function OperationsBoard({
   const [view, setView] = useState<OperationsView>(initialView);
   const [creating, setCreatingState] = useState(initialCreating);
   const canCreate = !!formCatalogs && can(role, "createOrder");
+  // Técnico: sin importes y solo los estados del circuito de taller (las filas ya vienen
+  // recortadas del server; acá se ajustan indicadores, chips, columnas y la tabla).
+  const showAmounts = can(role, "viewAmounts");
+  const statuses = WORK_ORDER_STATUSES.filter((s) => canSeeStatus(role, s));
+  const kanbanBase = KANBAN_COLUMNS.filter((s) => canSeeStatus(role, s));
   function setCreating(value: boolean) {
     setCreatingState(value);
     if (!value) {
@@ -130,9 +135,7 @@ export function OperationsBoard({
     );
   }, [rows, query, segment, branch]);
   const listRows = filterStatuses ? searched.filter((w) => filterStatuses.includes(w.status)) : searched;
-  const kanbanColumns = filterStatuses
-    ? KANBAN_COLUMNS.filter((c) => filterStatuses.includes(c))
-    : KANBAN_COLUMNS;
+  const kanbanColumns = filterStatuses ? kanbanBase.filter((c) => filterStatuses.includes(c)) : kanbanBase;
 
   const countBy = (s: WorkOrderStatus) => rows.filter((w) => w.status === s).length;
   const hasFilters = !!(query.trim() || filter || segment || branch);
@@ -147,7 +150,20 @@ export function OperationsBoard({
     compactValue?: string;
     sub: string;
     hero?: boolean;
-  }> = [
+  }> = !showAmounts
+    ? [
+        {
+          filter: "activas",
+          label: "Activas en taller",
+          value: String(rows.filter((w) => isInGroup(w.status, "ACTIVE")).length),
+          sub: "Nuevas, en curso y en espera",
+          hero: true,
+        },
+        { filter: "En Curso", label: "En curso", value: String(countBy("En Curso")), sub: "Trabajos en marcha" },
+        { filter: "Pendiente", label: "En espera", value: String(countBy("Pendiente")), sub: "Frenadas por algún motivo" },
+        { filter: "por-entregar", label: "Terminadas", value: String(countBy("Terminada")), sub: "Esperando entrega" },
+      ]
+    : [
     {
       filter: "activas",
       label: "Activas en taller",
@@ -278,7 +294,7 @@ export function OperationsBoard({
           {/* Filtro por estado con conteos (indicadores clickeables) */}
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por estado">
             {([["", "Todas", rows.length]] as Array<[WorkOrderStatus | "", string, number]>)
-              .concat(WORK_ORDER_STATUSES.map((s) => [s, s, countBy(s)]))
+              .concat(statuses.map((s) => [s, s, countBy(s)]))
               .map(([key, label, count]) => (
                 <button
                   key={key || "all"}
@@ -312,7 +328,7 @@ export function OperationsBoard({
                     <TableHead>Cliente</TableHead>
                     <TableHead>Patente / Vehículo</TableHead>
                     <TableHead>Servicio</TableHead>
-                    <TableHead className="text-right">Total neto</TableHead>
+                    {showAmounts && <TableHead className="text-right">Total neto</TableHead>}
                     <TableHead>Técnico</TableHead>
                     <TableHead>Alta</TableHead>
                   </TableRow>
@@ -363,7 +379,9 @@ export function OperationsBoard({
                           {labelOf(catalogs.services, wo.service_type_id) ?? wo.description ?? ""}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtMoney(wo.total_net || 0)}</TableCell>
+                      {showAmounts && (
+                        <TableCell className="text-right tabular-nums">{fmtMoney(wo.total_net || 0)}</TableCell>
+                      )}
                       <TableCell>{labelOf(catalogs.operators, wo.assigned_operator_id) ?? "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{fmtDate(wo.creation)}</TableCell>
                     </TableRow>
@@ -399,11 +417,12 @@ export function OperationsBoard({
 
       {canCreate && creating && (
         <SidePanel section="Operaciones" title="Nueva orden de trabajo" onClose={() => setCreating(false)}>
-          <div className="px-4 pt-4 sm:px-6">
-            <NewWorkOrderForm
+          <div className="min-h-full px-4 sm:px-6">
+            <NewOrderTabsForm
               {...formCatalogs!}
               canViewTaxId={can(role, "viewTaxId")}
               canManageBranches={can(role, "manageCatalogs")}
+              showPrices={showAmounts}
               onCancel={() => setCreating(false)}
               onCreated={(name) => {
                 setCreating(false);

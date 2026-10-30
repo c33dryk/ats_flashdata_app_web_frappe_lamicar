@@ -95,7 +95,13 @@ export function SignatureDialog({
     const out = document.createElement("canvas");
     out.width = Math.round(canvas.width * scale);
     out.height = Math.round(canvas.height * scale);
-    out.getContext("2d")?.drawImage(canvas, 0, 0, out.width, out.height);
+    const ctx = out.getContext("2d");
+    if (!ctx) return;
+    // Fondo blanco sólido (el lienzo es transparente): si no, en tema oscuro, en el visor de fotos
+    // o en el expediente el trazo oscuro queda sobre negro y la firma no se ve.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(canvas, 0, 0, out.width, out.height);
     onConfirm({ signedBy: signedBy.trim(), signatureDataUrl: out.toDataURL("image/png") });
   }
 

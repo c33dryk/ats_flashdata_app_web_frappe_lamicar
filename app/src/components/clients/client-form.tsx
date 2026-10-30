@@ -1,12 +1,12 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { nativeSelectClassName } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { saveClientAction } from "@/app/clientes/actions";
+import { getPolicyOptionsAction, saveClientAction } from "@/app/clientes/actions";
 import type { CatalogOption } from "@/lib/dashboard-metrics";
 import type { WoClient } from "@/lib/clients-shared";
 
@@ -17,6 +17,7 @@ export function ClientForm({
   initial,
   defaultName,
   defaultTaxId,
+  defaultCustomerType,
   customerTypes,
   canViewTaxId,
   onSaved,
@@ -26,6 +27,8 @@ export function ClientForm({
   defaultName?: string;
   /** Si se buscó por DNI/CUIT y no apareció, el número va al campo CUIT/DNI. */
   defaultTaxId?: string;
+  /** Alta desde la OT con el tipo de cliente ya elegido (ej. Aseguradora). */
+  defaultCustomerType?: string;
   customerTypes: CatalogOption[];
   canViewTaxId: boolean;
   onSaved: (client: WoClient) => void;
@@ -34,13 +37,31 @@ export function ClientForm({
   const id = useId();
   const [values, setValues] = useState({
     client_name: initial?.client_name ?? defaultName ?? "",
-    customer_type_id: initial?.customer_type_id ?? "",
+    customer_type_id: initial?.customer_type_id ?? defaultCustomerType ?? "",
+    evidence_policy_id: initial?.evidence_policy_id ?? "",
     tax_id: initial?.tax_id ?? defaultTaxId ?? "",
     phone: initial?.phone ?? "",
     email: initial?.email ?? "",
     address: initial?.address ?? "",
   });
   const [error, setError] = useState<string | null>(null);
+  // Convenios de fotos del tipo elegido (solo las aseguradoras tienen): se piden al cambiar el tipo.
+  const [policyOptions, setPolicyOptions] = useState<{
+    type: string;
+    list: Array<{ key: string; label: string }>;
+  } | null>(null);
+  useEffect(() => {
+    const type = values.customer_type_id;
+    if (!type) return;
+    let cancelled = false;
+    getPolicyOptionsAction(type).then((res) => {
+      if (!cancelled) setPolicyOptions({ type, list: res.ok ? res.data : [] });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [values.customer_type_id]);
+  const policies = policyOptions?.type === values.customer_type_id ? policyOptions.list : [];
   const [pending, startTransition] = useTransition();
   const set = (k: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setValues((v) => ({ ...v, [k]: e.target.value }));
@@ -48,7 +69,12 @@ export function ClientForm({
   function save() {
     setError(null);
     startTransition(async () => {
-      const res = await saveClientAction({ name: initial?.name, ...values });
+      const res = await saveClientAction({
+        name: initial?.name,
+        ...values,
+        // Si el tipo nuevo no tiene políticas, no se manda la vieja (el server la limpia).
+        evidence_policy_id: policies.some((p) => p.key === values.evidence_policy_id) ? values.evidence_policy_id : "",
+      });
       if (res.ok) onSaved(res.data);
       else setError(res.error);
     });
@@ -78,6 +104,24 @@ export function ClientForm({
             ))}
           </select>
         </div>
+        {policies.length > 0 && (
+          <div className="space-y-1">
+            <Label htmlFor={`${id}-policy`}>Política de fotos (convenio)</Label>
+            <select
+              id={`${id}-policy`}
+              value={values.evidence_policy_id}
+              onChange={set("evidence_policy_id")}
+              className={nativeSelectClassName}
+            >
+              <option value="">Sin definir (se elige en cada OT)</option>
+              {policies.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {canViewTaxId && (
           <div className="space-y-1">
             <Label htmlFor={`${id}-tax`}>CUIT / DNI</Label>

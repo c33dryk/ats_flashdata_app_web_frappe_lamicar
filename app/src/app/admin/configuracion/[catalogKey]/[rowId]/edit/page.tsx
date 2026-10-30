@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { CatalogRowForm } from "@/components/admin/catalog-row-form";
 import { EvidencePolicyForm } from "@/components/admin/evidence-policy-form";
 import { CATALOG_DEFS } from "@/lib/frappe/catalogs";
 import { FrappeApiError } from "@/lib/frappe/client";
-import { getDoc } from "@/lib/frappe/resource";
+import { getDoc, getList } from "@/lib/frappe/resource";
 import {
   getBranches,
   getCustomerTypes,
@@ -30,13 +32,25 @@ export default async function EditCatalogRowPage({
   let segmentOptions: Awaited<ReturnType<typeof getServiceSegments>> = [];
   let branchOptions: Awaited<ReturnType<typeof getBranches>> = [];
   let customerTypes: Awaited<ReturnType<typeof getCustomerTypes>> = [];
+  // Políticas: qué clientes (aseguradoras) tienen este convenio en su ficha.
+  let policyClients: Array<{ name: string; client_name: string }> = [];
   let errorMessage: string | null = null;
 
   try {
     if (isEvidencePolicies) {
-      const [policyResult, types] = await Promise.all([getEvidencePolicy(rowId), getCustomerTypes()]);
+      const [policyResult, types, clients] = await Promise.all([
+        getEvidencePolicy(rowId),
+        getCustomerTypes(),
+        getList<{ name: string; client_name: string }>("WO Client", {
+          fields: ["name", "client_name"],
+          filters: [["evidence_policy_id", "=", rowId]],
+          orderBy: "client_name asc",
+          limit: 0,
+        }).catch(() => []),
+      ]);
       policy = policyResult;
       customerTypes = types;
+      policyClients = clients;
     } else {
       const [rowResult, segments, branches] = await Promise.all([
         getDoc<Record<string, unknown>>(def.doctype, rowId),
@@ -77,7 +91,38 @@ export default async function EditCatalogRowPage({
             {errorMessage}
           </p>
         ) : isEvidencePolicies ? (
-          policy && <EvidencePolicyForm policy={policy} customerTypes={customerTypes} />
+          policy && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Clientes con este convenio ({policyClients.length})</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Se asigna en la ficha de cada aseguradora (Clientes → Política de fotos). Al abrir una
+                    OT para ese cliente, este checklist queda elegido solo.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {policyClients.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Ningún cliente tiene este convenio asignado todavía.</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-2">
+                      {policyClients.map((c) => (
+                        <li key={c.name}>
+                          <Link
+                            href={`/clientes?c=${encodeURIComponent(c.name)}`}
+                            className="inline-flex h-7 items-center rounded-md border border-border px-2.5 text-sm hover:bg-muted"
+                          >
+                            {c.client_name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+              <EvidencePolicyForm policy={policy} customerTypes={customerTypes} />
+            </>
+          )
         ) : (
           row && <CatalogRowForm def={def} segmentOptions={segmentOptions} branchOptions={branchOptions} row={row} />
         )}

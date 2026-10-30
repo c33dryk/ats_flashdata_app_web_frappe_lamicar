@@ -18,6 +18,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/** Texto legible sobre BRAND_COLOR: oscuro si el color es claro (ej. verde de marca), blanco si
+ *  es oscuro. Solo entiende hex (#rgb / #rrggbb); cualquier otro formato asume color claro. */
+function readableTextOn(color: string): string {
+  const dark = "oklch(0.19 0.01 260)";
+  let hex = color.trim().replace(/^#/, "");
+  if (/^[0-9a-f]{3}$/i.test(hex)) hex = hex.replace(/./g, "$&$&");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return dark;
+  // Luminancia relativa WCAG; 0.179 es el punto donde el negro y el blanco contrastan igual.
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.179 ? dark : "#ffffff";
+}
+
 export const metadata: Metadata = {
   title: "Lamicar · Órdenes de trabajo",
   description: "Boilerplate Next.js + Frappe",
@@ -38,7 +53,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body
         className="flex h-full min-h-full antialiased"
-        style={brandColor ? ({ "--brand": brandColor } as CSSProperties) : undefined}
+        style={
+          brandColor
+            ? ({ "--brand": brandColor, "--brand-foreground": readableTextOn(brandColor) } as CSSProperties)
+            : undefined
+        }
       >
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <Toast.Provider toastManager={toast}>

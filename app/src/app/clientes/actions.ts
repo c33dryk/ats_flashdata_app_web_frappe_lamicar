@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { can, type Capability } from "@/lib/permissions";
 import { FrappeApiError } from "@/lib/frappe/client";
+import { getList } from "@/lib/frappe/resource";
 import {
   createClient,
   getClient,
@@ -69,6 +70,7 @@ export interface ClientInput {
   name?: string; // vacío = alta
   client_name: string;
   customer_type_id?: string;
+  evidence_policy_id?: string;
   tax_id?: string;
   phone?: string;
   email?: string;
@@ -84,9 +86,18 @@ export async function saveClientAction(input: ClientInput): Promise<Result<WoCli
   if (!client_name) return { ok: false, error: "El nombre o razón social es obligatorio." };
   if (!input.customer_type_id) return { ok: false, error: "Elegí el tipo de cliente." };
 
+  // Política de fotos: solo para tipos que tienen políticas (aseguradoras) y tiene que ser de ese
+  // tipo. Si el tipo no tiene políticas, se limpia (ej. el cliente dejó de ser aseguradora).
+  const policies = await listPoliciesForType(input.customer_type_id).catch(() => []);
+  const policyId = input.evidence_policy_id?.trim() || "";
+  if (policyId && !policies.some((p) => p.key === policyId)) {
+    return { ok: false, error: "La política de fotos elegida no corresponde a este tipo de cliente." };
+  }
+
   const payload: Partial<WoClient> = {
     client_name,
     customer_type_id: input.customer_type_id,
+    evidence_policy_id: policyId || (isNew ? undefined : ""),
     phone: input.phone?.trim() || undefined,
     email: input.email?.trim() || undefined,
     address: input.address?.trim() || undefined,
@@ -200,5 +211,33 @@ export async function setVehicleActiveAction(plate: string, active: boolean): Pr
     return { ok: true, data: null };
   } catch (err) {
     return { ok: false, error: frappeMessage(err, "No se pudo actualizar la unidad") };
+  }
+}
+
+/** Políticas de fotos activas de un tipo de cliente, como opciones (key = name). */
+async function listPoliciesForType(customerTypeId: string) {
+  const rows = await getList<{ name: string; policy_name?: string }>("WO Evidence Policy", {
+    fields: ["name", "policy_name"],
+    filters: [
+      ["customer_type_id", "=", customerTypeId],
+      ["is_active", "=", 1],
+    ],
+    orderBy: "policy_name asc",
+    limit: 0,
+  });
+  return rows.map((r) => ({ key: r.name, label: r.policy_name || r.name }));
+}
+
+/** Para la ficha del cliente: convenios de fotos que puede tener según su tipo. */
+export async function getPolicyOptionsAction(
+  customerTypeId: string
+): Promise<Result<Array<{ key: string; label: string }>>> {
+  const { session, error } = await requireAny("manageClients", "quickCreateClients", "createOrder");
+  if (!session) return { ok: false, error: error! };
+  if (!customerTypeId) return { ok: true, data: [] };
+  try {
+    return { ok: true, data: await listPoliciesForType(customerTypeId) };
+  } catch (err) {
+    return { ok: false, error: frappeMessage(err, "No se pudieron leer las políticas") };
   }
 }

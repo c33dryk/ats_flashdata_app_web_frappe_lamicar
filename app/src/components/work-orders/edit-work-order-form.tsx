@@ -53,6 +53,7 @@ export function EditWorkOrderForm({
   canViewTaxId = false,
   initialClient = null,
   initialVehicle = null,
+  showPrices = true,
   onSaved,
   onCancel,
 }: {
@@ -67,6 +68,8 @@ export function EditWorkOrderForm({
   /** Cliente / unidad vinculados (si la OT ya está vinculada a los maestros). */
   initialClient?: WoClient | null;
   initialVehicle?: WoVehicle | null;
+  /** false = técnico: ítems sin precios (el server conserva los existentes). */
+  showPrices?: boolean;
   /** En el panel lateral: al guardar / cancelar vuelve a la vista de la OT en vez de navegar. */
   onSaved?: () => void;
   onCancel?: () => void;
@@ -203,8 +206,8 @@ export function EditWorkOrderForm({
                 <TableRow>
                   <TableHead>Descripción</TableHead>
                   <TableHead>Cantidad</TableHead>
-                  <TableHead>Precio unitario</TableHead>
-                  <TableHead>Subtotal</TableHead>
+                  {showPrices && <TableHead>Precio unitario</TableHead>}
+                  {showPrices && <TableHead>Subtotal</TableHead>}
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -227,6 +230,7 @@ export function EditWorkOrderForm({
                         onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })}
                       />
                     </TableCell>
+                    {showPrices && (
                     <TableCell>
                       <Input
                         type="number"
@@ -237,7 +241,10 @@ export function EditWorkOrderForm({
                         onChange={(e) => updateItem(i, { unit_price_net: Number(e.target.value) })}
                       />
                     </TableCell>
-                    <TableCell>{moneyFmt.format((item.quantity || 0) * (item.unit_price_net || 0))}</TableCell>
+                    )}
+                    {showPrices && (
+                      <TableCell>{moneyFmt.format((item.quantity || 0) * (item.unit_price_net || 0))}</TableCell>
+                    )}
                     <TableCell>
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(i)}>
                         Quitar
@@ -252,7 +259,7 @@ export function EditWorkOrderForm({
             <Button type="button" variant="outline" size="sm" onClick={addItem}>
               Agregar ítem
             </Button>
-            <p className="text-sm font-medium">Total neto: {moneyFmt.format(total)}</p>
+            {showPrices && <p className="text-sm font-medium">Total neto: {moneyFmt.format(total)}</p>}
           </div>
         </CardContent>
       </Card>

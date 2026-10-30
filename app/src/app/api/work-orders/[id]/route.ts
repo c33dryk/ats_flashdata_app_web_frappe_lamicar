@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth";
 import { FrappeApiError } from "@/lib/frappe/client";
 import { getEvidencePoliciesForCustomerType, getWorkOrder } from "@/lib/frappe/work-orders";
 import { getClient, getVehicle } from "@/lib/frappe/clients";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
+import { redactOrder } from "@/lib/work-order-visibility";
 
 // GET /api/work-orders/:id — la OT completa + las políticas de evidencia de su tipo de cliente +
 // el cliente y la unidad vinculados (para editarla en el panel; CUIT solo a quien puede verlo).
@@ -14,7 +15,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   try {
-    const workOrder = await getWorkOrder(id);
+    const fullOrder = await getWorkOrder(id);
+    // Técnico: solo OTs del circuito de taller y sin importes.
+    if (!canSeeStatus(session.role, fullOrder.status)) {
+      return NextResponse.json({ error: "No tenés acceso a esta orden." }, { status: 403 });
+    }
+    const workOrder = redactOrder(session.role, fullOrder);
     const [policies, client, vehicle] = await Promise.all([
       getEvidencePoliciesForCustomerType(workOrder.customer_type_id),
       workOrder.client_id ? getClient(workOrder.client_id).catch(() => null) : null,

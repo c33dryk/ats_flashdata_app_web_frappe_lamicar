@@ -53,6 +53,8 @@ export function ManagementDashboard({
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [filters, setFilters] = useState<DashboardFilters>(EMPTY_FILTERS);
   const [tab, setTab] = useState<BreakdownTab>("operator");
+  // En el celular los 7 filtros ocupan toda la pantalla: se pliegan detrás de un botón.
+  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(() => applyFilters(rows, filters), [rows, filters]);
   const buckets = useMemo(
@@ -168,7 +170,16 @@ export function ManagementDashboard({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+            className="text-sm font-medium text-muted-foreground hover:text-foreground sm:hidden"
+          >
+            {showFilters ? "Ocultar filtros" : "Filtros"}
+            {hasFilters && ` (${Object.values(filters).filter(Boolean).length} activos)`}
+          </button>
+          <div className={cn("grid-cols-2 gap-3 sm:grid md:grid-cols-3 xl:grid-cols-7", showFilters ? "grid" : "hidden")}>
             {filterDefs.map((fd) => (
               <div key={fd.key} className="space-y-1">
                 <Label htmlFor={`dash-${fd.key}`} className="text-xs text-muted-foreground">
@@ -235,7 +246,7 @@ export function ManagementDashboard({
               {inRange.length} órdenes · participación sobre el valor neto
             </p>
           </div>
-          <div className={segmentedGroupClass} role="group" aria-label="Desglosar por">
+          <div className={cn(segmentedGroupClass, "max-w-full overflow-x-auto")} role="group" aria-label="Desglosar por">
             {(
               [
                 ...(catalogs.branches.length ? [["branch", "Sucursal"] as const] : []),
@@ -343,7 +354,7 @@ function ColumnChart({
     <div>
       <div className="flex gap-2">
         {/* Eje Y */}
-        <div className="relative h-56 w-16 shrink-0" aria-hidden="true">
+        <div className="relative h-56 w-12 shrink-0 sm:w-16" aria-hidden="true">
           {ticks.map((t, i) => (
             <span
               key={i}
@@ -420,13 +431,14 @@ function ColumnChart({
       </div>
 
       {/* Eje X */}
-      <div className="ml-18 flex gap-0.5" aria-hidden="true">
-        {buckets.map((b) => (
+      <div className="ml-14 flex gap-0.5 sm:ml-18" aria-hidden="true">
+        {buckets.map((b, i) => (
           <span
             key={b.key}
             className={cn(
               "flex-1 truncate pt-1.5 text-center text-[11px] text-muted-foreground",
-              active === b.key && "font-semibold text-foreground"
+              buckets.length > 12 && i % 2 === 1 && "max-sm:invisible",
+              active === b.key && "visible font-semibold text-foreground"
             )}
           >
             {b.label}

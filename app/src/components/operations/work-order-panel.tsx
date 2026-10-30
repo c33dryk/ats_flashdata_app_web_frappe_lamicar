@@ -27,12 +27,12 @@ import { toast } from "@/components/ui/toast";
 import { EvidenceChecklist } from "@/components/work-orders/evidence-checklist";
 import { StatusBadge } from "@/components/work-orders/status-badge";
 import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
-import { EditWorkOrderForm } from "@/components/work-orders/edit-work-order-form";
+import { EditOrderTabsForm } from "@/components/work-orders/edit-order-tabs-form";
 import type { WoClient, WoVehicle } from "@/lib/clients-shared";
 import { labelOf, type DashboardCatalogs } from "@/lib/dashboard-metrics";
 import { EVIDENCE_LOCKED_STATUSES, requirementCount } from "@/lib/evidence";
 import { fmtMileage, fmtMoney } from "@/lib/format";
-import { can, canAccessPath } from "@/lib/permissions";
+import { can, canAccessPath, canSeeStatus } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/auth-shared";
 import type { RawCatalogs, WoEvidencePolicy, WorkOrder, WorkOrderStatus } from "@/lib/frappe/work-orders";
@@ -134,6 +134,8 @@ export function WorkOrderPanel({
   }
 
   const canEditOrder = !!wo && can(role, "editOrder") && !EVIDENCE_LOCKED_STATUSES.includes(wo.status);
+  // Técnico: sin importes (el server ya no los manda) ni pasos de entrega/facturación.
+  const showAmounts = can(role, "viewAmounts");
 
   return (
     <SidePanel
@@ -197,14 +199,16 @@ export function WorkOrderPanel({
           )}
         </div>
       ) : editing && formCatalogs ? (
-        <div className="px-4 pt-4 sm:px-6">
-          <EditWorkOrderForm
+        <div className="min-h-full px-4 sm:px-6">
+          <EditOrderTabsForm
             key={wo.modified}
             workOrder={wo}
             {...formCatalogs}
             canViewTaxId={can(role, "viewTaxId")}
             initialClient={data!.client}
             initialVehicle={data!.vehicle}
+            initialTab={tab === "items" ? "items" : "parties"}
+            showPrices={showAmounts}
             onSaved={() => {
               toast.add({ title: `${wo.name} actualizada`, type: "success" });
               setEditing(false);
@@ -228,7 +232,7 @@ export function WorkOrderPanel({
               {wo.customer_name} · <span className="font-mono">{wo.license_plate}</span>
               {wo.vehicle_brand_model && ` · ${wo.vehicle_brand_model}`}
             </p>
-            <FlowStepper status={wo.status} />
+            <FlowStepper status={wo.status} role={role} />
           </div>
 
           {wo.status === "Pendiente" && wo.pending_reason && (
@@ -292,7 +296,7 @@ export function WorkOrderPanel({
                 .filter(Boolean)
                 .join(" · ") || "—"}
             />
-            <Prop icon={CircleDollarSign} label="Total neto" value={fmtMoney(wo.total_net || 0)} />
+            {showAmounts && <Prop icon={CircleDollarSign} label="Total neto" value={fmtMoney(wo.total_net || 0)} />}
             <Prop icon={Calendar} label="Alta" value={fmtDateTime(wo.creation)} />
             {(wo.delivery_signed_at || wo.delivery_date) && (
               <Prop
@@ -349,7 +353,7 @@ export function WorkOrderPanel({
                 onReload={() => load()}
               />
             )}
-            {tab === "items" && <ItemsTab wo={wo} />}
+            {tab === "items" && <ItemsTab wo={wo} showAmounts={showAmounts} />}
             {tab === "activity" && <ActivityTab wo={wo} />}
           </div>
         </div>
@@ -396,7 +400,8 @@ function Prop({
   );
 }
 
-function FlowStepper({ status }: { status: WorkOrderStatus }) {
+function FlowStepper({ status, role }: { status: WorkOrderStatus; role: AppRole }) {
+  const steps = FLOW.filter((s) => canSeeStatus(role, s));
   if (status === "Anulada") {
     return (
       <p className="flex items-center gap-2 text-sm text-destructive">
@@ -405,10 +410,10 @@ function FlowStepper({ status }: { status: WorkOrderStatus }) {
     );
   }
   // Pendiente es un desvío de "En Curso": se muestra sobre ese paso.
-  const current = FLOW.indexOf(status === "Pendiente" ? "En Curso" : status);
+  const current = steps.indexOf(status === "Pendiente" ? "En Curso" : status);
   return (
     <ol className="flex items-center gap-1" aria-label="Avance de la orden">
-      {FLOW.map((step, i) => (
+      {steps.map((step, i) => (
         <li key={step} className="flex flex-1 flex-col gap-1">
           <span
             className={cn(
@@ -431,9 +436,21 @@ function FlowStepper({ status }: { status: WorkOrderStatus }) {
   );
 }
 
-function ItemsTab({ wo }: { wo: WorkOrder }) {
+function ItemsTab({ wo, showAmounts }: { wo: WorkOrder; showAmounts: boolean }) {
   const items = wo.items ?? [];
   if (!items.length) return <p className="text-sm text-muted-foreground">Sin ítems cargados.</p>;
+  if (!showAmounts) {
+    return (
+      <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+        {items.map((it, i) => (
+          <li key={it.name ?? i} className="flex items-center justify-between gap-3 px-3 py-2">
+            <span>{it.description}</span>
+            <span className="shrink-0 text-muted-foreground tabular-nums">× {it.quantity}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-sm">

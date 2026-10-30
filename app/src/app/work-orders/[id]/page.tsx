@@ -16,7 +16,8 @@ import {
 import { WorkOrderActions } from "@/components/work-orders/work-order-actions";
 import { EvidenceCard } from "@/components/work-orders/evidence-card";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
+import { redactOrder } from "@/lib/work-order-visibility";
 import { getEvidencePoliciesForCustomerType, getWorkOrder, type WoEvidencePolicy } from "@/lib/frappe/work-orders";
 import { EVIDENCE_LOCKED_STATUSES } from "@/lib/evidence";
 import { fmtMileage } from "@/lib/format";
@@ -78,6 +79,12 @@ export default async function WorkOrderDetailPage({
         ? `No se pudo conectar con Frappe (${err.status}). Revisá FRAPPE_URL / FRAPPE_API_KEY / FRAPPE_API_SECRET en .env.`
         : "No se pudo conectar con Frappe. Revisá la configuración en .env.";
   }
+
+  // Técnico: solo OTs del circuito de taller (si no, como si no existiera) y sin importes.
+  // Fuera del try: notFound() lanza y el catch de arriba lo convertiría en error de conexión.
+  if (wo && session && !canSeeStatus(session.role, wo.status)) notFound();
+  if (wo && session) wo = redactOrder(session.role, wo);
+  const showAmounts = !!session && can(session.role, "viewAmounts");
 
   return (
     <div className="flex flex-1 flex-col">
@@ -162,6 +169,7 @@ export default async function WorkOrderDetailPage({
                 </CardContent>
               </Card>
 
+              {showAmounts && (
               <Card>
                 <CardHeader>
                   <CardTitle>Entrega y Facturación</CardTitle>
@@ -178,6 +186,7 @@ export default async function WorkOrderDetailPage({
                   />
                 </CardContent>
               </Card>
+              )}
             </div>
 
             <Card>
@@ -191,8 +200,8 @@ export default async function WorkOrderDetailPage({
                       <TableRow>
                         <TableHead>Descripción</TableHead>
                         <TableHead>Cantidad</TableHead>
-                        <TableHead>Precio unitario</TableHead>
-                        <TableHead>Total</TableHead>
+                        {showAmounts && <TableHead>Precio unitario</TableHead>}
+                        {showAmounts && <TableHead>Total</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -200,8 +209,8 @@ export default async function WorkOrderDetailPage({
                         <TableRow key={item.name ?? i}>
                           <TableCell>{item.description}</TableCell>
                           <TableCell>{item.quantity}</TableCell>
-                          <TableCell>{moneyFmt.format(item.unit_price_net)}</TableCell>
-                          <TableCell>{moneyFmt.format(item.amount_net ?? 0)}</TableCell>
+                          {showAmounts && <TableCell>{moneyFmt.format(item.unit_price_net)}</TableCell>}
+                          {showAmounts && <TableCell>{moneyFmt.format(item.amount_net ?? 0)}</TableCell>}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -209,9 +218,11 @@ export default async function WorkOrderDetailPage({
                 ) : (
                   <p className="text-sm text-muted-foreground">Sin ítems cargados.</p>
                 )}
-                <p className="mt-3 text-right text-sm font-medium">
-                  Total neto: {moneyFmt.format(wo.total_net || 0)}
-                </p>
+                {showAmounts && (
+                  <p className="mt-3 text-right text-sm font-medium">
+                    Total neto: {moneyFmt.format(wo.total_net || 0)}
+                  </p>
+                )}
               </CardContent>
             </Card>
 

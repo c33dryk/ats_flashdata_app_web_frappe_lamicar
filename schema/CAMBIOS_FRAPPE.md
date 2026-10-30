@@ -31,6 +31,8 @@ app `lamicar_services` (no Custom, ver abajo), nombre del registro = un dato de 
 | DocType `WO Client` (**no existía**, se creó; sección 4) | ✅ aplicado 2026-10-18 |
 | `Work Order.evidence_policy_id`, `.client_id`, `.vehicle_id` | ✅ aplicado 2026-10-18 |
 | `Work Order.delivery_note_id`, `.invoiced_net` | ⏳ pendiente (dependen de `WO Delivery Note`) |
+| `WO Client.evidence_policy_id` (política de fotos de cada aseguradora) | ✅ aplicado 2026-10-19 (sección 3) |
+| `Work Order Item.service_type_id` (tipo de trabajo de cada ítem del presupuesto) | ⏳ pendiente (sección 3) |
 | Permisos de la cuenta de servicio (sección 5) | ✅ `WO Client` y `WO Vehicle` · ⏳ `WO Invoice`, `WO Delivery Note` |
 | `WO Evidence.zone` → `Data` (sección 6) | ✅ aplicado 2026-10-18 (era `Select`) |
 | Backups (sección 6) | ⚠️ **no hay backup automático** (ver sección 6) |
@@ -90,11 +92,33 @@ Se agregan editando el DocType en Desk.
 
 | Campo | Tipo | Opciones | Para qué |
 |---|---|---|---|
-| `evidence_policy_id` | Link | `WO Evidence Policy` | Qué política de fotos aplica (hoy hay 5 para `ASEG`, una por aseguradora) |
+| `evidence_policy_id` | Link | `WO Evidence Policy` | Qué política de fotos aplica (hoy hay 5 para `ASEG`, una por convenio). La elige recepción en el alta de la OT |
 | `client_id` | Link | `WO Client` | Cliente del maestro (`customer_name` y demás se mantienen como copia histórica) |
 | `vehicle_id` | Link | `WO Vehicle` | Vehículo de la flota (`license_plate` y demás se mantienen como copia) |
 | `delivery_note_id` | Link | `WO Delivery Note` | Remito vigente de la OT |
 | `invoiced_net` | Currency | — (solo lectura) | Neto facturado acumulado (FC + ND − NC); lo mantiene la app |
+
+**`WO Client`**
+
+| Campo | Tipo | Opciones | Para qué |
+|---|---|---|---|
+| `evidence_policy_id` | Link | `WO Evidence Policy` | Política de fotos y archivos de esa aseguradora (convenio). Varias aseguradoras pueden compartir la misma (ej. "Compañías Aseguradoras"). Solo tiene sentido para clientes de tipo `ASEG`; no obligatorio |
+
+✅ Aplicado 2026-10-19 (con `depends_on: eval:doc.customer_type_id=='ASEG'`). En la app: se carga
+en la ficha del cliente (`/clientes`, solo si su tipo tiene políticas) y el alta de OT la toma sola;
+si el cliente no la tiene cargada, el alta sugiere la de su última OT.
+
+**`Work Order Item`** (tabla hija de los ítems / presupuesto de la OT)
+
+| Campo | Tipo | Opciones | Para qué |
+|---|---|---|---|
+| `service_type_id` | Link | `WO Service Type` | Tipo de trabajo del catálogo del que sale el ítem (segmento → tipo de trabajo, con su `suggested_price`). Vacío = ítem libre. No obligatorio; ubicarlo antes de `description`, `in_list_view: 1` |
+
+Para qué: los ítems de la OT son lo que se factura; con este Link se puede facturar y reportar
+por tipo de trabajo (cuánto se hizo de "Reemplazo de parabrisas", a qué precio vs. el de lista).
+La app **ya lo manda** al guardar cada ítem que sale del catálogo. Hasta que exista el campo,
+Frappe descarta los campos que no tiene en el DocType y solo queda la descripción (verificarlo con
+la primera OT con presupuesto; si diera error, avisar).
 
 **`WO Branch`**
 

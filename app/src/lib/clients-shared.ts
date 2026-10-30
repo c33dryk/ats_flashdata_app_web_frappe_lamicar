@@ -9,6 +9,8 @@ export interface WoClient {
   name: string; // CLI-00001
   client_name: string;
   customer_type_id?: string;
+  /** Aseguradoras: política (convenio) de fotos y archivos que piden. El alta de OT la toma sola. */
+  evidence_policy_id?: string;
   tax_id?: string; // CUIT / DNI — sensible: solo para roles con can(role, "viewTaxId")
   phone?: string;
   email?: string;

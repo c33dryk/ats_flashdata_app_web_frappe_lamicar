@@ -45,12 +45,12 @@
   --sidebar-ring: oklch(0.65 0.01 260);
 
   /* Color de marca por cliente/proyecto — sobreescrito inline en <body> desde BRAND_COLOR
-     (.env), ver layout.tsx. --brand acá es el fallback si la env var no está seteada.
-     --brand-foreground queda fijo (no cambia con light/dark): asume que BRAND_COLOR suele ser
-     un tono claro/saturado (ej. un verde de marca) sobre el que va texto oscuro — igual que en
-     el dashboard de referencia. Si el proyecto usa un brand color oscuro, ajustar acá a mano. */
+     (.env), ver layout.tsx. --brand acá es el fallback si la env var no está seteada: el color
+     de texto del tema, así que el texto encima va con el color de fondo (sigue a light/dark).
+     Con BRAND_COLOR seteado, layout.tsx también pisa --brand-foreground (blanco u oscuro según
+     cuán claro sea el color) — si no, quedaba texto oscuro sobre botón oscuro en modo claro. */
   --brand: var(--foreground);
-  --brand-foreground: oklch(0.19 0.01 260);
+  --brand-foreground: var(--background);
 }
 
 .dark {

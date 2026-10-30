@@ -11,6 +11,8 @@ export const STATUS_GROUPS = {
   PIPELINE: ["Nueva", "En Curso", "Pendiente", "Terminada", "Entregada"],
   /** Entregadas con remito firmado (incluye las ya facturadas). */
   DELIVERED: ["Entregada", "Facturada"],
+  /** Circuito de taller: lo único que ve el técnico (sin entrega, facturación ni anuladas). */
+  WORKSHOP: ["Nueva", "En Curso", "Pendiente", "Terminada"],
   /** Estados que se muestran en flujo/kanban (Anulada queda afuera). */
   FLOW: ["Nueva", "En Curso", "Pendiente", "Terminada", "Entregada", "Facturada"],
 } as const satisfies Record<string, readonly WorkOrderStatus[]>;

@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { nativeSelectClassName } from "@/components/ui/native-select";
+import { segmentedGroupClass, segmentedItemClass } from "@/components/ui/segmented";
 import { toast } from "@/components/ui/toast";
 import { removeEvidenceAction } from "@/app/work-orders/[id]/actions";
 import {
@@ -76,7 +77,11 @@ export function EvidenceChecklist({
   /** Volver a leer la OT (tras borrar, o si hubo conflicto de concurrencia). */
   onReload: () => void;
 }) {
-  const [policyName, setPolicyName] = useState(policies[0]?.name ?? "");
+  // La política guardada en la OT (elegida en el alta) manda; las OTs viejas no la tienen y
+  // arrancan con la primera del tipo de cliente.
+  const [policyName, setPolicyName] = useState(
+    policies.find((p) => p.name === workOrder.evidence_policy_id)?.name ?? policies[0]?.name ?? ""
+  );
   const policy = policies.find((p) => p.name === policyName) ?? policies[0];
   const requirements = policy?.requirements ?? [];
 
@@ -161,8 +166,20 @@ export function EvidenceChecklist({
   }
 
   const evidence = workOrder.evidence ?? [];
-  const metCount = requirements.filter((r) => requirementCount(workOrder, r) >= (r.min_photos ?? 1)).length;
+  const isMet = (r: WoEvidenceRequirement) => requirementCount(workOrder, r) >= (r.min_photos ?? 1);
+  const metCount = requirements.filter(isMet).length;
   const others = evidence.filter((e) => !requirements.some((r) => matchesRequirement(e, r.code)));
+
+  // Sub-pestañas por etapa de la política (Antes / Durante / Después / Entrega) + "Otros". Arranca
+  // en la primera etapa con requisitos pendientes.
+  const stageTabs = STAGES.map((st) => {
+    const reqs = requirements.filter((r) => r.stage === st.key);
+    return { ...st, reqs, met: reqs.filter(isMet).length };
+  }).filter((st) => st.reqs.length > 0);
+  const [stageTab, setStageTab] = useState<string>(
+    () => (stageTabs.find((st) => st.met < st.reqs.length) ?? stageTabs[0])?.key ?? OTHER_SLOT
+  );
+  const activeStage = stageTabs.some((st) => st.key === stageTab) ? stageTab : OTHER_SLOT;
 
   return (
     <div className="space-y-5">
@@ -180,13 +197,21 @@ export function EvidenceChecklist({
               </span>{" "}
               <span className="text-muted-foreground">requisitos cumplidos</span>
             </div>
-            {policies.length > 1 && (
+            {workOrder.evidence_policy_id && policy?.name === workOrder.evidence_policy_id ? (
+              <span className="text-xs text-muted-foreground" title="Se cambia desde Editar → Fotos y archivos">
+                {policy.policy_name || policy.name}
+              </span>
+            ) : policies.length > 1 && (
               <select
                 value={policy?.name}
                 onChange={(e) => setPolicyName(e.target.value)}
                 className={cn(nativeSelectClassName, "w-auto")}
                 aria-label="Política de evidencia"
-                title="La OT todavía no guarda qué política aplica: elegila acá"
+                title={
+                  workOrder.evidence_policy_id
+                    ? "Política elegida en el alta de la orden"
+                    : "Esta orden no tiene política guardada: elegila acá"
+                }
               >
                 {policies.map((p) => (
                   <option key={p.name} value={p.name}>
@@ -205,14 +230,43 @@ export function EvidenceChecklist({
         </div>
       )}
 
-      {STAGES.map((stage) => {
-        const reqs = requirements.filter((r) => r.stage === stage.key);
-        if (!reqs.length) return null;
+      {stageTabs.length > 0 && (
+        <div className={cn(segmentedGroupClass, "w-full max-w-full overflow-x-auto sm:w-auto")} role="tablist" aria-label="Etapas">
+          {[...stageTabs, { key: OTHER_SLOT, label: "Otros", reqs: [], met: 0 }].map((st) => {
+            const done = st.reqs.length > 0 && st.met >= st.reqs.length;
+            return (
+              <button
+                key={st.key}
+                type="button"
+                role="tab"
+                aria-selected={activeStage === st.key}
+                onClick={() => setStageTab(st.key)}
+                className={cn(segmentedItemClass(activeStage === st.key), "flex-1 gap-1.5 sm:flex-none")}
+              >
+                {st.key === "before" ? "Antes" : st.key === OTHER_SLOT ? "Otros" : st.label}
+                {st.reqs.length > 0 && (
+                  <span
+                    className={cn(
+                      "text-xs tabular-nums",
+                      done ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+                    )}
+                  >
+                    {st.met}/{st.reqs.length}
+                  </span>
+                )}
+                {st.key === OTHER_SLOT && others.length > 0 && (
+                  <span className="text-xs text-muted-foreground tabular-nums">{others.length}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {stageTabs.filter((st) => st.key === activeStage).map((stage) => {
+        const reqs = stage.reqs;
         return (
-          <section key={stage.key} className="space-y-2">
-            <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              {stage.label}
-            </h3>
+          <section key={stage.key} className="space-y-2" role="tabpanel">
             {reqs.map((req) => (
               <RequirementRow
                 key={req.code}
@@ -232,7 +286,8 @@ export function EvidenceChecklist({
         );
       })}
 
-      <section className="space-y-2">
+      {activeStage === OTHER_SLOT && (
+      <section className="space-y-2" role="tabpanel">
         <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Otros archivos
         </h3>
@@ -267,6 +322,7 @@ export function EvidenceChecklist({
           )}
         </div>
       </section>
+      )}
 
       <Modal
         open={!!viewing}
@@ -282,7 +338,8 @@ export function EvidenceChecklist({
               <img
                 src={fileHref(viewing.url)}
                 alt={viewing.filename ?? "Evidencia"}
-                className="mx-auto max-h-[70dvh] rounded-md object-contain"
+                // Firmas: siempre sobre blanco (las guardadas antes del fix son PNG transparentes).
+                className={cn("mx-auto max-h-[70dvh] rounded-md object-contain", viewing.type === "signature" && "bg-white")}
               />
             ) : (
               <iframe
@@ -419,7 +476,10 @@ function Thumbs({
               src={fileHref(ev.url)}
               alt={ev.filename ?? "Evidencia"}
               loading="lazy"
-              className="size-full object-cover transition-transform group-hover:scale-105"
+              className={cn(
+                "size-full object-cover transition-transform group-hover:scale-105",
+                ev.type === "signature" && "bg-white object-contain"
+              )}
             />
           ) : (
             <span className="flex size-full flex-col items-center justify-center gap-1 p-1 text-[10px] text-muted-foreground">

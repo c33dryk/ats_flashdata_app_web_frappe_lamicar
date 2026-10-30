@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
 import { str } from "@/lib/form-data";
 import { FrappeApiError, frappeUploadFile } from "@/lib/frappe/client";
 import {
@@ -57,6 +57,9 @@ export async function transitionWorkOrderAction(
     fresh = await getWorkOrder(orderId);
   } catch {
     return { error: "No se pudo leer la orden de trabajo. Recargá la página." };
+  }
+  if (!canSeeStatus(session.role, fresh.status)) {
+    return { error: "No tenés acceso a esta orden." };
   }
 
   if (fresh.modified !== expectedModified) {
@@ -185,6 +188,9 @@ export async function removeEvidenceAction(
     fresh = await getWorkOrder(orderId);
   } catch {
     return { error: "No se pudo leer la orden de trabajo. Recargá la página." };
+  }
+  if (!canSeeStatus(session.role, fresh.status)) {
+    return { error: "No tenés acceso a esta orden." };
   }
   if (fresh.modified !== expectedModified) {
     return { error: "La orden fue modificada por otro usuario. Recargá la página." };

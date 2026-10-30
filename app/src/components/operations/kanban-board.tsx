@@ -394,7 +394,8 @@ function CardBody({ wo, catalogs }: { wo: DashboardWorkOrder; catalogs: Dashboar
         </span>
       )}
       <div className="mt-1 flex items-center justify-between border-t border-border pt-1.5 text-xs">
-        <span className="font-semibold tabular-nums">{fmtMoney(wo.total_net || 0)}</span>
+        {/* Sin total_net = el rol no ve importes (el server lo quitó, ver work-order-visibility.ts) */}
+        <span className="font-semibold tabular-nums">{wo.total_net !== undefined ? fmtMoney(wo.total_net) : ""}</span>
         <span className="text-muted-foreground">
           {labelOf(catalogs.operators, wo.assigned_operator_id)?.split(" ")[0] ?? "Sin asignar"}
         </span>

@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { OperationsBoard } from "@/components/operations/operations-board";
 import { getSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { visibleOrdersFor } from "@/lib/work-order-visibility";
 import { FrappeApiError } from "@/lib/frappe/client";
 import {
   getDashboardWorkOrders,
@@ -32,6 +33,11 @@ export default async function OperacionesPage({
 
   try {
     [rows, raw] = await Promise.all([getDashboardWorkOrders(), getRawCatalogs()]);
+    rows = visibleOrdersFor(session.role, rows);
+    // El precio de lista del catálogo tampoco viaja a quien no ve importes (técnico).
+    if (!can(session.role, "viewAmounts")) {
+      raw = { ...raw, serviceTypes: raw.serviceTypes.map((s) => ({ ...s, suggested_price: undefined })) };
+    }
     catalogs = toCatalogOptions(raw);
   } catch (err) {
     errorMessage =

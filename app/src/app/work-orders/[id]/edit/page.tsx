@@ -3,7 +3,8 @@ import { Topbar } from "@/components/shell/topbar";
 import { Breadcrumbs } from "@/components/shell/breadcrumbs";
 import { EditWorkOrderForm } from "@/components/work-orders/edit-work-order-form";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
+import { redactOrder } from "@/lib/work-order-visibility";
 import { FrappeApiError } from "@/lib/frappe/client";
 import {
   getWorkOrder,
@@ -33,6 +34,8 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
   if (LOCKED_STATUSES.includes(wo.status as (typeof LOCKED_STATUSES)[number])) {
     redirect(`/work-orders/${id}`);
   }
+  if (!canSeeStatus(session.role, wo.status)) notFound();
+  wo = redactOrder(session.role, wo);
 
   let catalogs: RawCatalogs | null = null;
   let linkedClient: WoClient | null = null;
@@ -81,6 +84,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
           catalogs && (
             <EditWorkOrderForm
               workOrder={wo}
+              showPrices={can(session.role, "viewAmounts")}
               customerTypes={catalogs.customerTypes}
               vehicleTypes={catalogs.vehicleTypes}
               serviceSegments={catalogs.serviceSegments}

@@ -21,6 +21,9 @@ services:
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       NODE_ENV: production
       TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      # Color de acento (botones/indicadores). Sin esto en el .env del server cae al fallback
+      # de globals.css (botones negros en modo claro).
+      BRAND_COLOR: ${BRAND_COLOR:-}
       # Next.js standalone bindea a $HOSTNAME, que Docker setea al container ID por default;
       # eso resuelve a una sola IP de una sola red y Traefik (en la red "web") no puede
       # conectar. Forzar 0.0.0.0 para escuchar en todas las interfaces (mismo gotcha que Talent).

@@ -4,7 +4,7 @@ import { normalizePlate, type WoClient, type WoVehicle } from "@/lib/clients-sha
 // Acceso a `WO Client` y `WO Vehicle` (maestros de clientes y flota). Al migrar a Frappe esto ya
 // es nativo: son DocTypes con Link desde Work Order.
 
-const CLIENT_FIELDS = ["name", "client_name", "customer_type_id", "tax_id", "phone", "email", "address", "is_active", "modified"];
+const CLIENT_FIELDS = ["name", "client_name", "customer_type_id", "evidence_policy_id", "tax_id", "phone", "email", "address", "is_active", "modified"];
 const VEHICLE_FIELDS = ["name", "license_plate", "client_id", "vehicle_type_id", "brand_model", "year", "color", "vin", "is_active", "modified"];
 
 export function getClients() {

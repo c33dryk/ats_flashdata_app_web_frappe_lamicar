@@ -95,6 +95,9 @@ export const CATALOG_DEFS: CatalogDef[] = [
       { name: "specialty_segment", label: "Especialidad Principal", type: "segment-select" },
       { name: "branch_id", label: "Sucursal", type: "branch-select" },
       { name: "phone", label: "Teléfono", type: "text" },
+      // Link a User en Frappe: el email con el que el técnico entra a la app. Arma su tablero
+      // "Taller" en el Dashboard (sus OTs asignadas).
+      { name: "system_user", label: "Usuario del sistema (email)", type: "text" },
       { name: "is_active", label: "Activo", type: "checkbox" },
     ],
     listColumns: ["employee_id", "full_name", "specialty_segment", "branch_id"],

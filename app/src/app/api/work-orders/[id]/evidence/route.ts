@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
-import { can } from "@/lib/permissions";
+import { can, canSeeStatus } from "@/lib/permissions";
+import { redactOrder } from "@/lib/work-order-visibility";
 import { FrappeApiError, frappeUploadFile } from "@/lib/frappe/client";
 import {
   COMMAND_ROLES,
@@ -63,6 +64,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch {
     return NextResponse.json({ error: "No se pudo leer la orden de trabajo." }, { status: 502 });
   }
+  if (!canSeeStatus(session.role, fresh.status)) {
+    return NextResponse.json({ error: "No tenés acceso a esta orden." }, { status: 403 });
+  }
   if (fresh.modified !== expectedModified) {
     return NextResponse.json(
       { error: "La orden fue modificada por otro usuario. Se recargaron los datos; volvé a intentar." },
@@ -114,7 +118,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   revalidatePath(`/work-orders/${id}`);
-  return NextResponse.json({ workOrder: updated });
+  return NextResponse.json({ workOrder: redactOrder(session.role, updated) });
 }
 
 function saveError(err: unknown) {

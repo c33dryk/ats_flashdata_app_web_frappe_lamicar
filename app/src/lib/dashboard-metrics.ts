@@ -196,3 +196,79 @@ export function buildBreakdown(
   if (unassigned.length) result.push(toRow("__none__", "Sin asignar", unassigned));
   return result;
 }
+
+// ── Tableros por rol (Recepción / Taller / Facturación) ─────────────────────────
+// Todas las fechas se comparan por prefijo "YYYY-MM-DD" (Frappe las devuelve en hora del sitio).
+
+/** Días enteros entre una fecha de Frappe ("YYYY-MM-DD[ HH:MM:SS]") y hoy ("YYYY-MM-DD"). */
+export function daysSince(date: string | undefined, todayISO: string): number | null {
+  if (!date || date.length < 10) return null;
+  const toUTC = (iso: string) => {
+    const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const diff = Math.round((toUTC(todayISO) - toUTC(date)) / 86_400_000);
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
+}
+
+const byOldest = (get: (w: DashboardWorkOrder) => string | undefined) => (a: DashboardWorkOrder, b: DashboardWorkOrder) =>
+  (get(a) ?? "").localeCompare(get(b) ?? "");
+
+/** Recepción: lo que pasa por el mostrador (ingresos, entregas, esperas, OTs sin técnico). */
+export function computeReceptionStats(rows: DashboardWorkOrder[], todayISO: string) {
+  return {
+    receivedToday: rows
+      .filter((w) => w.status !== "Anulada" && (w.creation ?? "").startsWith(todayISO))
+      .sort(byOldest((w) => w.creation)),
+    readyToDeliver: rows.filter((w) => w.status === "Terminada").sort(byOldest((w) => w.modified)),
+    waiting: rows.filter((w) => w.status === "Pendiente").sort(byOldest((w) => w.modified)),
+    unassigned: rows
+      .filter((w) => isInGroup(w.status, "ACTIVE") && !w.assigned_operator_id)
+      .sort(byOldest((w) => w.creation)),
+  };
+}
+
+/** Taller: las OTs de un técnico (o de todos si operatorId es ""), sin montos. */
+export function computeWorkshopStats(rows: DashboardWorkOrder[], operatorId: string) {
+  const mine = rows.filter((w) => !operatorId || w.assigned_operator_id === operatorId);
+  const by = (status: string) => mine.filter((w) => w.status === status).sort(byOldest((w) => w.creation));
+  return {
+    inProgress: by("En Curso"),
+    toStart: by("Nueva"),
+    waiting: by("Pendiente"),
+    finished: by("Terminada"),
+  };
+}
+
+/** Carga activa (Nueva/En Curso/Pendiente) por técnico, de mayor a menor. */
+export function workloadByOperator(rows: DashboardWorkOrder[], operators: CatalogOption[]) {
+  const active = rows.filter((w) => isInGroup(w.status, "ACTIVE"));
+  return buildBreakdown(active, (w) => w.assigned_operator_id, operators)
+    .filter((r) => r.count > 0)
+    .sort((a, b) => b.count - a.count);
+}
+
+/** Facturación: cola de entregadas sin facturar (más vieja primero) y lo facturado en el mes. */
+export function computeBillingStats(rows: DashboardWorkOrder[], todayISO: string) {
+  const month = todayISO.slice(0, 7);
+  const queue = rows
+    .filter((w) => w.status === "Entregada")
+    .sort(byOldest((w) => w.delivery_date || w.modified));
+  const invoicedThisMonth = rows.filter(
+    (w) => w.status === "Facturada" && (w.invoice_date ?? "").startsWith(month)
+  );
+  const readySoon = rows.filter((w) => w.status === "Terminada");
+  return {
+    queue,
+    queueAmount: queue.reduce((acc, w) => acc + orderValue(w), 0),
+    notValued: queue.filter((w) => !w.total_net),
+    invoicedThisMonth,
+    invoicedThisMonthAmount: invoicedThisMonth.reduce((acc, w) => acc + invoicedValue(w), 0),
+    readySoon,
+    readySoonAmount: readySoon.reduce((acc, w) => acc + orderValue(w), 0),
+    recentInvoiced: rows
+      .filter((w) => w.status === "Facturada")
+      .sort((a, b) => (b.invoice_date || b.modified || "").localeCompare(a.invoice_date || a.modified || ""))
+      .slice(0, 5),
+  };
+}

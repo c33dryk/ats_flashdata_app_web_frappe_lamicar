@@ -20,6 +20,7 @@ export function ClientPicker({
   canViewTaxId,
   allowCreate = true,
   label = "Cliente",
+  customerType,
 }: {
   value: WoClient | null;
   onChange: (client: WoClient | null) => void;
@@ -27,6 +28,8 @@ export function ClientPicker({
   canViewTaxId: boolean;
   allowCreate?: boolean;
   label?: string;
+  /** Solo ofrece clientes de este tipo (y el alta rápida lo trae elegido). */
+  customerType?: string;
 }) {
   const [creating, setCreating] = useState<string | null>(null);
 
@@ -62,6 +65,7 @@ export function ClientPicker({
           {...(looksLikeTaxId(creating) && canViewTaxId
             ? { defaultTaxId: creating.trim() }
             : { defaultName: creating })}
+          defaultCustomerType={customerType}
           customerTypes={customerTypes}
           canViewTaxId={canViewTaxId}
           onSaved={(c) => {
@@ -77,7 +81,14 @@ export function ClientPicker({
   return (
     <SearchCombobox<WoClient>
       label={label}
-      search={searchClientsAction}
+      search={
+        customerType
+          ? async (q) => {
+              const res = await searchClientsAction(q);
+              return res.ok ? { ok: true, data: res.data.filter((c) => c.customer_type_id === customerType) } : res;
+            }
+          : searchClientsAction
+      }
       getKey={(c) => c.name}
       placeholder={canViewTaxId ? "Buscar por nombre, CUIT o teléfono…" : "Buscar por nombre o teléfono…"}
       onSelect={onChange}

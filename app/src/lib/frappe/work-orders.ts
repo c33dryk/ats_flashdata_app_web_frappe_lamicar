@@ -19,6 +19,8 @@ export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
 
 export interface WorkOrderItem {
   name?: string;
+  /** Link -> WO Service Type: el tipo de trabajo del catálogo del que salió el ítem (vacío = libre). */
+  service_type_id?: string;
   description: string;
   quantity: number;
   unit_price_net: number;
@@ -78,6 +80,7 @@ export interface WorkOrder {
   description?: string;
   assigned_operator_id?: string;
   branch_id?: string; // Link -> WO Branch (sucursal)
+  evidence_policy_id?: string; // Link -> WO Evidence Policy (fotos/archivos que pide la aseguradora)
   pending_reason?: string;
 
   items?: WorkOrderItem[];
@@ -209,6 +212,8 @@ export type DashboardWorkOrder = Pick<
   | "description"
   | "total_net"
   | "invoice_amount"
+  | "invoice_date"
+  | "delivery_date"
   | "creation"
   | "modified"
 >;
@@ -234,6 +239,8 @@ export function getDashboardWorkOrders() {
       "description",
       "total_net",
       "invoice_amount",
+      "invoice_date", // dashboard de Facturación: facturado en el mes
+      "delivery_date", // dashboard de Facturación: antigüedad de la cola
       "creation",
       "modified", // control de concurrencia al mover tarjetas en el kanban
     ],

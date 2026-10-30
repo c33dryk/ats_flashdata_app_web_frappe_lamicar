@@ -11,9 +11,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/work-orders/status-badge";
+import { OrderRow } from "@/components/dashboard/order-list";
 import { computeOperationalStats, labelOf, type DashboardCatalogs } from "@/lib/dashboard-metrics";
 import { fmtMoney, fmtMoneyCompact } from "@/lib/format";
 import { isInGroup } from "@/lib/work-order-status";
+import { cn } from "@/lib/utils";
 import type { DashboardWorkOrder } from "@/lib/frappe/work-orders";
 
 const ACTIVE_TABLE_LIMIT = 8;
@@ -84,8 +86,14 @@ export function OperationalDashboard({
           <CardContent className="flex flex-col gap-3">
             {stats.byStatus.map((s) => {
               const pct = flowTotal > 0 ? (s.count / flowTotal) * 100 : 0;
+              const href = shopAccess ? `/operaciones?filtro=${encodeURIComponent(s.status)}` : undefined;
+              const Row = href ? Link : "div";
               return (
-                <div key={s.status} className="flex items-center gap-3">
+                <Row
+                  key={s.status}
+                  href={href!}
+                  className={cn("-mx-2 flex items-center gap-3 rounded-md px-2 py-1", href && "transition-colors hover:bg-muted/60")}
+                >
                   <span className="w-24 shrink-0">
                     <StatusBadge status={s.status} />
                   </span>
@@ -99,7 +107,7 @@ export function OperationalDashboard({
                   <span className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums">
                     {s.count}
                   </span>
-                </div>
+                </Row>
               );
             })}
           </CardContent>
@@ -146,6 +154,26 @@ export function OperationalDashboard({
         {activeOrders.length === 0 ? (
           <p className="px-4 py-6 text-sm text-muted-foreground">No hay órdenes activas.</p>
         ) : (
+          <>
+          {/* Celular: filas apiladas; desde tablet, la tabla completa */}
+          <ul className="divide-y divide-border md:hidden">
+            {activeOrders.map((wo) => (
+              <li key={wo.name}>
+                <OrderRow
+                  wo={wo}
+                  href={`${orderBase}?ot=${encodeURIComponent(wo.name)}`}
+                  showStatus
+                  meta={
+                    [labelOf(catalogs.services, wo.service_type_id), labelOf(catalogs.operators, wo.assigned_operator_id)]
+                      .filter(Boolean)
+                      .join(" · ") || undefined
+                  }
+                  aside={<span className="text-sm font-semibold tabular-nums">{fmtMoneyCompact(wo.total_net || 0)}</span>}
+                />
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -185,6 +213,8 @@ export function OperationalDashboard({
               ))}
             </TableBody>
           </Table>
+          </div>
+          </>
         )}
       </Card>
     </div>
